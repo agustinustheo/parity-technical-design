@@ -13,4 +13,4 @@ Finished technical designs for the Polkadot Products Platform.
 
 ## About this collection
 
-Read the [repository guide]({{ '/README.html' | relative_url }}) for the document structure and review process. The [source repository](https://github.com/agustinustheo/technical-design) contains the Markdown files.
+Read the [repository guide](https://github.com/agustinustheo/technical-design#readme) for the document structure and review process. The [source repository](https://github.com/agustinustheo/technical-design) contains the Markdown files.
