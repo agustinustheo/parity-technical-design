@@ -25,6 +25,6 @@
 {% unless content contains '<h1' %}<h1>{{ page.title | default: site.title }}</h1>{% endunless %}
 {{ content }}
 </article></main>
-<aside class="toc" aria-label="On this page"><strong>On this page</strong><nav id="toc-links"></nav></aside>
+<aside class="toc" aria-label="On this page"><details id="toc-details" open><summary>On this page</summary><nav id="toc-links"></nav></details></aside>
 </div>
 </body></html>

@@ -6,12 +6,17 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu();
 sidebar.addEventListener('click', e => { if (e.target.closest('a')) closeMenu(); });
 document.querySelector('main').addEventListener('click', closeMenu);
 const toc = document.querySelector('#toc-links');
+const tocDetails = document.querySelector('#toc-details');
+const compactToc = matchMedia('(max-width: 1250px)');
+const setTocMode = () => { tocDetails.open = !compactToc.matches; };
+setTocMode();
+compactToc.addEventListener('change', setTocMode);
 for (const heading of document.querySelectorAll('article h2[id], article h3[id]')) {
   const link = document.createElement('a'); link.href = `#${heading.id}`; link.textContent = heading.textContent;
   if (heading.tagName === 'H3') link.className = 'subheading';
   toc.append(link);
 }
-if (!toc.children.length) toc.parentElement.hidden = true;
+if (!toc.children.length) toc.closest('.toc').hidden = true;
 for (const table of document.querySelectorAll('article table')) {
   const wrapper = document.createElement('div'); wrapper.className = 'table-scroll'; wrapper.tabIndex = 0;
   table.before(wrapper); wrapper.append(table);
