@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ page.title | default: site.title | escape }} · Parity docs</title>
+<link rel="stylesheet" href="{{ '/assets/docs.css' | relative_url }}">
+<script type="module" src="{{ '/assets/docs.js' | relative_url }}"></script>
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header class="mobile-header"><a href="{{ '/' | relative_url }}">Parity technical docs</a><button id="menu-toggle" aria-controls="sidebar" aria-expanded="false">Menu</button></header>
+<aside id="sidebar" class="sidebar">
+<a class="brand" href="{{ '/' | relative_url }}">Parity<span>Technical design docs</span></a>
+<nav aria-label="Documentation">
+{% for group in site.data.navigation %}
+<details class="nav-group" open><summary>{{ group.title }}</summary><ul>
+{% for item in group.links %}<li><a href="{{ item.url | relative_url }}"{% if page.url == item.url %} aria-current="page"{% endif %}>{{ item.title }}</a></li>{% endfor %}
+</ul></details>
+{% endfor %}
+</nav>
+<a class="source-link" href="https://github.com/agustinustheo/parity-technical-design/tree/indiv-non-fn-testing">View source on GitHub ↗</a>
+</aside>
+<div class="page-shell">
+<main id="content" tabindex="-1"><article>
+{% unless content contains '<h1' %}<h1>{{ page.title | default: site.title }}</h1>{% endunless %}
+{{ content }}
+</article></main>
+<aside class="toc" aria-label="On this page"><strong>On this page</strong><nav id="toc-links"></nav></aside>
+</div>
+</body></html>

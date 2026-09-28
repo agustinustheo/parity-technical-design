@@ -1,0 +1,116 @@
+[
+  {
+    "title": "Start here",
+    "links": [
+      {
+        "title": "Home",
+        "url": "/"
+      },
+      {
+        "title": "Coinage overview",
+        "url": "/designs/individuality/non-fun-tests/README.html"
+      }
+    ]
+  },
+  {
+    "title": "Coinage",
+    "links": [
+      {
+        "title": "User flows",
+        "url": "/designs/individuality/non-fun-tests/coinage/user-flows.html"
+      },
+      {
+        "title": "Production policies",
+        "url": "/designs/individuality/non-fun-tests/coinage/production-policies.html"
+      },
+      {
+        "title": "Runtime components",
+        "url": "/designs/individuality/non-fun-tests/coinage/pallet-components.html"
+      },
+      {
+        "title": "Constants",
+        "url": "/designs/individuality/non-fun-tests/coinage/constants.html"
+      }
+    ]
+  },
+  {
+    "title": "Policy examples",
+    "links": [
+      {
+        "title": "Recycling unavailable",
+        "url": "/designs/individuality/non-fun-tests/coinage/policy-examples/recycling-unavailable-handling.html"
+      },
+      {
+        "title": "Split coin selection",
+        "url": "/designs/individuality/non-fun-tests/coinage/policy-examples/split-coin-selection.html"
+      },
+      {
+        "title": "Voucher selection",
+        "url": "/designs/individuality/non-fun-tests/coinage/policy-examples/voucher-selection.html"
+      }
+    ]
+  },
+  {
+    "title": "Test design",
+    "links": [
+      {
+        "title": "Wallet components",
+        "url": "/designs/individuality/non-fun-tests/test-design/wallet-module-components.html"
+      },
+      {
+        "title": "Profile schema",
+        "url": "/designs/individuality/non-fun-tests/test-design/profile-schema.html"
+      },
+      {
+        "title": "Earlier profiles (deprecated)",
+        "url": "/designs/individuality/non-fun-tests/test-design/concrete-profiles-deprecated.html"
+      }
+    ]
+  },
+  {
+    "title": "Scenarios",
+    "links": [
+      {
+        "title": "Claim burst",
+        "url": "/designs/individuality/non-fun-tests/test-design/scenarios/claim-burst.html"
+      },
+      {
+        "title": "Top-up burst",
+        "url": "/designs/individuality/non-fun-tests/test-design/scenarios/top-up-burst.html"
+      },
+      {
+        "title": "Payment burst",
+        "url": "/designs/individuality/non-fun-tests/test-design/scenarios/payment-burst.html"
+      },
+      {
+        "title": "Merchant fan-in",
+        "url": "/designs/individuality/non-fun-tests/test-design/scenarios/merchant-fan-in.html"
+      },
+      {
+        "title": "Synchronised recycling",
+        "url": "/designs/individuality/non-fun-tests/test-design/scenarios/synchronised-recycling.html"
+      },
+      {
+        "title": "Free-quota exhaustion",
+        "url": "/designs/individuality/non-fun-tests/test-design/scenarios/free-quota-exhaustion.html"
+      },
+      {
+        "title": "Offboarding burst",
+        "url": "/designs/individuality/non-fun-tests/test-design/scenarios/offboarding-burst.html"
+      },
+      {
+        "title": "Full-flow ramp",
+        "url": "/designs/individuality/non-fun-tests/test-design/scenarios/full-flow-ramp.html"
+      }
+    ]
+  },
+  {
+    "title": "Storage",
+    "links": [
+      {
+        "title": "Capacity",
+        "url": "/designs/storage/capacity/"
+      }
+    ]
+  }
+]

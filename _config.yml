@@ -12,3 +12,8 @@ relative_links:
   collections: true
 exclude:
   - TEMPLATE.md
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
