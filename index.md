@@ -9,6 +9,7 @@ Technical designs and draft test plans for the Polkadot Products Platform.
 
 ### Individuality
 
+- [Measured results and next experiments]({{ '/designs/individuality/non-fun-tests/test-design/measured-results.html' | relative_url }})
 - [Coinage non-functional tests]({{ '/designs/individuality/non-fun-tests/' | relative_url }}) — draft performance and stress test plan
 - [Stress test scenarios]({{ '/designs/individuality/non-fun-tests/test-design/scenarios/' | relative_url }})
 
