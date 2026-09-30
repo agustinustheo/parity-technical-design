@@ -12,6 +12,10 @@ Many recipients claim existing coins at once. This is the first, narrower case o
 | Response | Each transfer finalizes successfully; the source coin is consumed and the recipient owns the same instance and denomination, with age increased by one. |
 | Measures | Finalized claims, failures and unresolved claims; p50/p95/max finality; finalized state checks; time to drain after the last send. |
 
+## Measured results
+
+See the [Coinage stress-test findings](../measured-results.md) for completed runs, receipt verification, limitations and the status of the next experiments. The setup and criteria below remain the scenario specification.
+
 ## Pilot setup
 
 Use the network and transaction tracking from the top-up burst in `polkadot-pop-e2e` PR #34, including the six relay validators and two People collators from #32. Run at zero added delay first.

@@ -15,6 +15,12 @@ Many actors top up at the same time. This loads the onboarding flow: each top-up
 | **Response** | Loads are included and finalised. New vouchers join a built ring revision. |
 | **Response measure** | Loads finalised versus submitted; pool rejections by reason; time until the new vouchers are in a built ring revision. |
 
+## Measured results
+
+See the [Coinage stress-test findings](../measured-results.md) for completed runs, receipt verification, limitations and the status of the next experiments. The setup and criteria below remain the scenario specification.
+
+**Paced result:** [7,000 + 3,000 top-ups passed](../measured-results.md#paced-result-7000--3000--pass): 10,000 verified successful finalized receipts, matching backing and ready vouchers, with no retries or manual transaction-pool increase. This is a two-wave completion result, not a simultaneous 10,000-top-up burst.
+
 ## First run: one load per actor
 
 Use a transaction driver with fixed inputs. Each actor submits one `load_recycler_with_external_asset_unpaid`. This tests the chain path without a wallet planner. It does not establish full app capacity or compare iOS with Android.

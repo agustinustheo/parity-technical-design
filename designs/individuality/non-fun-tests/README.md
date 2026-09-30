@@ -14,6 +14,10 @@ Scope: Coinage
 
 This proposal describes how we will measure Coinage performance at planned load and find its limits under stress. It explains the wallet components and user flows that generate load, then defines the profiles, policies and runtime conditions needed to build test scenarios; the scenario catalogue and execution setup are still being developed.
 
+## Measured results
+
+Pacing and larger pool settings both produced successful 10,000-top-up runs. The 8,500-transaction first wave exposed dropped-watch outcomes that still require receipt reconciliation. The earlier simultaneous 10,000-top-up run with default pool settings remains the failed baseline; the 1,000-top-up and 1,000-claim passes remain valid. See the [measured results, evidence and next experiments](test-design/measured-results.md) for verified receipt counts, state observations and limitations.
+
 ## Reading Order
 
 The files fall into two groups. The first describes Coinage as it works today. The second describes how we build the tests. This overview ties them together.
