@@ -183,6 +183,41 @@ See the [pinned claim-capacity results guide][claim-capacity-guide] and the exis
 
 Full evidence is preserved locally under `coinage-evidence/claims-capacity-2026-10-01/`, separately from the hosted summary. GitHub artifacts are temporary and expire after **30 days**; local archives survive that expiry. The multi-gigabyte archive is not a website download. Original observations remain separate from later verification and from earlier top-up reconciliations.
 
+## Claim generator memory retention — 2 October 2026
+
+The million-claim attempt exposed a **load-generator memory limit**. The memory fix then passed a verified 1,000-claim validation. These observations do not establish the chain's maximum capacity. “Claims” means one signed transfer per root-seeded source coin, not real app users or the full payment lifecycle. The smoke claim is separate and excluded.
+
+| Experiment / run | Outcome | Requested | Submitted | Watch-finalized | Receipt-verified |
+| --- | --- | ---: | --- | --- | --- |
+| [Million-claim attempt][retention-million] | **Generator heap exhausted** | 1,000,000 | Not established | Not established | No complete audit |
+| [Memory-fix validation][retention-validation] | **PASS** | 1,000 | 1,000 | 1,000 | 1,000 |
+| [250,000-claim experiment][retention-250k] | **RUNNING — results pending** | 250,000 | Pending evidence | Pending evidence | Pending evidence |
+
+**Million-claim attempt:** all claims were prepared, but the TypeScript driver exhausted its **24 GiB JavaScript heap**. The configured pool was **1,100,000 transactions / 262144 KiB**. Repeated broadcast notifications and decoded blocks were retained without bounds; no heap profile established their exact share of memory. No complete final receipt or state audit was produced. Recovery passed after the driver crashed. The submitted, successful and failed totals for the million requested claims remain unestablished.
+
+The [memory-retention fix][retention-fix] ([PR #38](https://github.com/paritytech/polkadot-pop-e2e/pull/38)) aggregates broadcast notifications into counters and timestamps, caps retained watch observations and decoded-block caching, and writes non-broadcast watch transitions and observed block evidence during execution. It releases completed watch traces and signed wire data. Receipt verification and final-state requirements remain in place, with no added pacing, automatic retries or relaxed success criteria. A local regression test processed **one million repeated notifications under a 128 MiB heap limit**. This was a synthetic notification test, not a million-transaction chain test.
+
+### Verified 1,000-claim validation
+
+The saved receipt audit verifies **1,000 successful claims**. All saved source/recipient states were independently rechecked with **zero mismatches**. Fixture backing remained **2,001 → 2,001**, in the artifact's raw units; root seeding bypasses normal issuance and held-backing setup. This unchanged balance does not verify normal held-backing accounting. The run used the **default transaction pool**. Recovery and the overall workflow passed.
+
+| Measurement | Milliseconds |
+| --- | ---: |
+| Client submission window | 71.915 |
+| Per-claim finality p50 / p95 / max (all 1,000) | 34,482.891 / 34,498.700 / 34,504.053 |
+| Last watch settled, from burst start | 34,558.428 |
+| Summary elapsed time | 36,058.706 |
+
+Finality measures each transaction's submission through client-observed finalized notification and receipt lookup. The [driver at the fix commit][retention-driver] starts its elapsed timer after preparation and before submission. Elapsed time includes watch settlement, observer shutdown, sender disconnection, final coin/balance queries and summary preparation. It excludes fixture preparation, the subsequent independent aggregate receipt audit and recovery. The client submission window is not node acceptance time or chain throughput.
+
+All **1,000** claims emitted client-observed pool-ready notifications. **Pool-ready notifications are not voucher readiness**; ring readiness is not applicable to these claim-only tests. Receipts were rechecked against raw extrinsic hashes, block indexes, `System.ExtrinsicSuccess`, expected `Coinage.CoinTransferred` events, and saved canonical/finality observations from both People nodes. These are consistency checks on saved RPC evidence, not cryptographic consensus proofs.
+
+### Pending 250,000-claim experiment
+
+At **2026-10-01 17:37 UTC** (2 October locally), GitHub reported **in progress**, with no downloadable artifacts. Configuration only: **250,000 claims in one burst**, no pacing or retries; pool **275,000 transactions / 262144 KiB**; fixture batch **5,000**; client launch target **60 seconds**; watch deadline **60 minutes**. It uses the same [memory-fix commit][retention-fix] as the validation. Submitted, watch-finalized and receipt-verified counts, final state, memory measurements and recovery remain unavailable. Inspect those artifacts before assigning a result. A larger pool provides queue space; it does not establish higher chain execution capacity.
+
+The validation evidence and checksum manifest are preserved locally under `coinage-evidence/claims-retention-2026-10-02/`; they are not public downloads. The recorded independent validation timestamp is **2026-10-01 17:18:52 UTC** (2 October locally). Original observations remain separate from later verification. See the existing [claim scenario][claim-spec] and [claim methodology][claim-capacity-guide] for workload and measurement boundaries.
+
 ## How verification works
 
 Each verified receipt matches a transaction hash to raw extrinsic bytes, its block and index, `System.ExtrinsicSuccess`, and the expected Coinage event. The reconciled top-up receipts also match the event’s actor, instance, denomination and amount to the fixture. Both local People nodes report the block as canonical and finalized. Separate state checks verify actor debits, held backing and voucher inclusion in built roots for top-ups, or source and recipient coin state for claims. These are trusted local-node observations, not independent cryptographic consensus proofs.
@@ -217,6 +252,9 @@ Saved evidence reconciled on **2026-09-30 at approximately 09:51 UTC**; no tests
 | [36832069153][capacity-20000] | [`23a884c644db`](https://github.com/paritytech/polkadot-pop-e2e/commit/23a884c644dba50805f7b9373ad45d2529bb888f) | Claims; verified 2026-10-01 UTC: 20,000 receipts and matching states; unchanged fixture backing, recovery passed. Full artifact: 11148628985. |
 | [36836204912][capacity-40000] | [`39d2961bb794`](https://github.com/paritytech/polkadot-pop-e2e/commit/39d2961bb7940ee0dd07b970968bc4be034a9608) | Claims; verified 2026-10-01 UTC: 40,000 receipts and matching states; unchanged fixture backing, recovery passed. Full artifact: 11150407769. |
 | [36840043405][capacity-100000] | [`b7451cd74bbe`](https://github.com/paritytech/polkadot-pop-e2e/commit/b7451cd74bbe71799ab9bc8e01a69696ab043217) | Claims; verified 2026-10-01 UTC: 100,000 receipts and matching states; unchanged fixture backing, recovery passed. Full artifact: 11154045167. |
+| [36859278723][retention-million] | [`6c6ce86ad0da`](https://github.com/paritytech/polkadot-pop-e2e/commit/6c6ce86ad0dab94ea45a2bd9a589f459d168c92d) | Generator heap exhaustion after preparing 1,000,000 claims; no complete receipt/state audit; recovery passed. |
+| [36895937059][retention-validation] | [`932677d50e07`][retention-fix] | 1,000 successful receipts; all final coin states rechecked without mismatches; unchanged fixture backing; recovery passed. |
+| [36898423397][retention-250k] | [`932677d50e07`][retention-fix] | Running at this update; configuration recorded, results pending evidence. |
 
 Claim evidence is retained locally in `coinage-evidence/claims-10000-36705343718/` and `coinage-evidence/claims-comparison-2026-09-30/`, including `experiments.json`, verification outputs, exact test code and SHA-256 manifests. The comparison directory contains full artifacts for both successful runs. These local copies survive GitHub artifact expiry; they are not website downloads.
 
@@ -247,3 +285,9 @@ GitHub artifacts expire after **30 days**, on **October 29–30** for these runs
 [capacity-40000]: https://github.com/paritytech/polkadot-pop-e2e/actions/runs/36836204912
 [capacity-100000]: https://github.com/paritytech/polkadot-pop-e2e/actions/runs/36840043405
 [claim-capacity-guide]: https://github.com/paritytech/polkadot-pop-e2e/blob/dfdc44a75bc91ea1610742b42b4e5278f4ad42fd/ci/previewnet/burst-results.md
+
+[retention-million]: https://github.com/paritytech/polkadot-pop-e2e/actions/runs/36859278723
+[retention-validation]: https://github.com/paritytech/polkadot-pop-e2e/actions/runs/36895937059
+[retention-250k]: https://github.com/paritytech/polkadot-pop-e2e/actions/runs/36898423397
+[retention-fix]: https://github.com/paritytech/polkadot-pop-e2e/commit/932677d50e07052e62d45356a334801dc4630270
+[retention-driver]: https://github.com/paritytech/polkadot-pop-e2e/blob/932677d50e07052e62d45356a334801dc4630270/packages/chain-tests/scripts/coinage-claim-burst.ts
