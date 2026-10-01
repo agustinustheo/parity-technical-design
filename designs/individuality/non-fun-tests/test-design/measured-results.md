@@ -98,6 +98,37 @@ Held backing matches `Coinage.Wrapped`: two test-asset units per executed top-up
 
 Recovery passed in all three runs. Each People collator authored **32 of the 64** checked finalized blocks. This establishes liveness and author participation, not complete ring-backlog drainage.
 
+## Claim experiments: 10,000 claims
+
+Verified from preserved evidence on **30 September 2026 UTC**. Each actor submitted one signed `Coinage.transfer` for a pre-seeded source coin. These claim-only PreviewNet tests exclude onboarding, coin selection, voucher readiness and the full payment lifecycle. Fixture seeding bypasses normal issuance and held-backing setup. A separate smoke claim is excluded from all counts. **Ring readiness is not applicable.**
+
+All three experiments requested and submitted 10,000 claims. Finality values below are seconds, measured over successful claims only.
+
+| Claim experiment / evidence | Result | Receipt- and state-verified | Finality p50 / p95 / max | Watches settled |
+| --- | --- | ---: | --- | ---: |
+| [10,000 simultaneous, default pool][claims-default] | **FAIL — full completion** | 8,192 / 10,000 | 38.234 / 50.167 / 50.185 | 50.418 s |
+| [8,000 + 2,000 paced, default pool][claims-paced] | **PASS** | 10,000 / 10,000 | 38.970 / 50.680 / 50.697 | 79.207 s |
+| [10,000 simultaneous, enlarged pool][claims-enlarged] | **PASS** | 10,000 / 10,000 | 42.903 / 54.686 / 54.694 | 55.127 s |
+
+- **Default-pool burst:** client submissions launched within **471.12 ms**. There were **989 immediate pool-limit rejections** and **819 dropped watches**. Those 819 source coins remained unchanged and their recipients were absent at finalized block **173754**. This is the saved observation cutoff, not a statement about every later block. No failed dispatch receipts were found in the saved receipt blocks. The **9,011 ready notifications are not successful-claim receipts**: 819 subsequently reported dropped. The exact cause of those dropped watches was not traced through pool internals.
+- **Paced run:** 8,000 claims launched within **349.60 ms**, then 2,000 within **84.13 ms**. Wave two began **52.241 s** after wave one began, only after the first 8,000 successful finalized receipts passed the audit against both People nodes. Measured stage duration was **113.615 s**. Both collator logs confirm the unchanged default ready-pool limits: **8,192 transactions / 20 MiB**.
+- **Enlarged-pool burst:** all 10,000 claims launched within **433.40 ms**. Both People collators used `--pool-limit=11000 --pool-kbytes=40960`; both startup logs confirm **11,000 ready transactions / 40 MiB**. Measured stage duration was **88.275 s**.
+
+Both successful runs had **no rejections, dropped watches, failed dispatch receipts or unresolved receipts**, and **no retries**. Network recovery passed in all three experiments. Both People collators advanced **11 finalized blocks** during recovery for the paced run and **10** for the enlarged-pool run.
+
+**Both pacing and the larger pool allowed all 10,000 claims to complete in these runs.** The default-pool simultaneous run did not complete all claims. A larger pool provides more buffering; both count and byte limits changed, so this comparison does not isolate which limit mattered. These individual observations do not establish increased block-processing capacity, production user capacity, correct weights, PVF deadline compliance or a universal capacity threshold.
+
+### Claim evidence and timing boundaries
+
+The experiments used the same PreviewNet snapshot and binary provenance, with two People collators and the required relay validators, without added network delay. Each verified receipt was checked against its raw extrinsic hash, finalized block/index, `System.ExtrinsicSuccess` and `Coinage.CoinTransferred`, with saved canonical/finalized observations from both People nodes. Successful claims removed the source coin and created the expected recipient coin with the same instance/value and age increased from **0 to 1**. The fixture asset balance remained **20,001 before and after each run**. This unchanged fixture asset balance does not prove normal held-backing accounting. Saved local RPC observations are not independent consensus or storage proofs.
+
+- **Finality:** each claim's own submission until the client observes finalization and completes receipt lookup. The timing populations are 8,192, 10,000 and 10,000 respectively.
+- **Submission window:** client launch time, not node acceptance time or chain throughput.
+- **Watch settlement:** time from the first wave's start until all watch outcomes settle, including the inter-wave receipt gate in the paced run.
+- **Stage duration:** also includes wave audits, observer shutdown and final state queries. It excludes fixture preparation, final aggregate receipt auditing, offline verification and recovery. Setup took roughly an hour and is excluded from burst timings.
+
+Original run observations and subsequent offline checks are retained separately. These claim results do not inherit the successful dropped-watch reconciliation from the earlier top-up experiments.
+
 ## How verification works
 
 Each verified receipt matches a transaction hash to raw extrinsic bytes, its block and index, `System.ExtrinsicSuccess`, and the expected Coinage event. The reconciled top-up receipts also match the event’s actor, instance, denomination and amount to the fixture. Both local People nodes report the block as canonical and finalized. Separate state checks verify actor debits, held backing and voucher inclusion in built roots for top-ups, or source and recipient coin state for claims. These are trusted local-node observations, not independent cryptographic consensus proofs.
@@ -126,6 +157,11 @@ Saved evidence reconciled on **2026-09-30 at approximately 09:51 UTC**; no tests
 | [36609355696][larger-pool] | [`e2952bc3cea2`](https://github.com/paritytech/polkadot-pop-e2e/commit/e2952bc3cea2cb1b01556663950862e5e9d78b9f) | Saved audit: 10,000 unique verified receipts, no errors; final state checks passed. Enlarged pool confirmed in startup logs. |
 | [36619415692][paced-8500] | [`28ff6d477179`](https://github.com/paritytech/polkadot-pop-e2e/commit/28ff6d47717904567aa2a97b1119b6cd6443f65f) | First-wave gate failed originally; all 8,500 submitted receipts now verified. Only 5,869 ready in saved state; final 1,500 never sent. Preserved artifact: 11060739103. |
 | [36662212241][paced-8400] | [`28ff6d477179`](https://github.com/paritytech/polkadot-pop-e2e/commit/28ff6d47717904567aa2a97b1119b6cd6443f65f) | 10,000 receipts independently rechecked; all ready, backing matched, recovery passed. Preserved artifact: 11076898224. |
+| [36705343718][claims-default] | [`0793ccc5df8b`](https://github.com/paritytech/polkadot-pop-e2e/commit/0793ccc5df8b4f6fbc410b68658ba4976466244d) | Claims; verified 2026-09-30 UTC: 8,192 receipts and matching states; 989 rejected, 819 dropped. Preserved full artifact: 11095640662. |
+| [36719621433][claims-paced] | [`3e2552a841a2`](https://github.com/paritytech/polkadot-pop-e2e/commit/3e2552a841a20ee8d3f209e0e7390d1976bc3c89) | Claims; verified 2026-09-30 UTC: 10,000 receipts and matching states; first-wave gate and recovery passed. Preserved artifact: 11105025693. |
+| [36719745986][claims-enlarged] | [`3e2552a841a2`](https://github.com/paritytech/polkadot-pop-e2e/commit/3e2552a841a20ee8d3f209e0e7390d1976bc3c89) | Claims; verified 2026-09-30 UTC: 10,000 receipts and matching states; enlarged pool confirmed, recovery passed. Preserved artifact: 11109621586. |
+
+Claim evidence is retained locally in `coinage-evidence/claims-10000-36705343718/` and `coinage-evidence/claims-comparison-2026-09-30/`, including `experiments.json`, verification outputs, exact test code and SHA-256 manifests. The comparison directory contains full artifacts for both successful runs. These local copies survive GitHub artifact expiry; they are not website downloads.
 
 ### Preserved reconciliation evidence
 
@@ -145,3 +181,7 @@ GitHub artifacts expire after **30 days**, on **October 29–30** for these runs
 [guide]: https://github.com/paritytech/polkadot-pop-e2e/blob/feat/th-coinage-top-up-burst/ci/previewnet/burst-results.md
 [topup-spec]: https://github.com/paritytech/technical-design/blob/indiv-non-fn-testing/designs/individuality/non-fun-tests/test-design/scenarios/top-up-burst.md
 [claim-spec]: https://github.com/paritytech/technical-design/blob/indiv-non-fn-testing/designs/individuality/non-fun-tests/test-design/scenarios/claim-burst.md
+
+[claims-default]: https://github.com/paritytech/polkadot-pop-e2e/actions/runs/36705343718
+[claims-paced]: https://github.com/paritytech/polkadot-pop-e2e/actions/runs/36719621433
+[claims-enlarged]: https://github.com/paritytech/polkadot-pop-e2e/actions/runs/36719745986
