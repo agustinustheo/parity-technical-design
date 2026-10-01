@@ -1,5 +1,7 @@
 # Coinage stress-test findings
 
+We verified a burst of **100,000 claims**. These experiments establish completed burst sizes, not the server’s physical maximum or sustainable production throughput.
+
 Pacing and larger pool settings both produced successful 10,000-top-up runs. Later reconciliation verified all 88 dropped-watch transactions from the two incomplete runs. Those runs remain failed as 10,000-top-up experiments: one had 989 admission rejections, and the other never submitted its final 1,500 transactions.
 
 ## Measured results
@@ -129,6 +131,58 @@ The experiments used the same PreviewNet snapshot and binary provenance, with tw
 
 Original run observations and subsequent offline checks are retained separately. These claim results do not inherit the successful dropped-watch reconciliation from the earlier top-up experiments.
 
+## Claim capacity experiments — 1 October 2026
+
+**We verified a burst of 100,000 claims. These experiments establish completed burst sizes, not the server’s physical maximum or sustainable production throughput.** All three runs passed: every requested claim has a successful finalized receipt and matching final coin state. There were no retries, failed dispatch receipts or unresolved receipts. Recovery passed, and both People collators continued authoring.
+
+All times in the following table are seconds. Each finality population includes every successful claim in its run: 20,000, 40,000 or 100,000.
+
+| Claims / run | Pool entries | Client launch | Last receipt from burst start | Finality p50 / p95 / max |
+| --- | ---: | ---: | ---: | --- |
+| [20,000][capacity-20000] | 22,000 | 0.802 | 94.263 | 65.711 / 93.806 / 93.914 |
+| [40,000][capacity-40000] | 44,000 | 1.582 | 140.925 | 92.300 / 139.394 / 139.566 |
+| [100,000][capacity-100000] | 110,000 | 3.930 | 312.867 | 178.521 / 297.346 / 310.339 |
+
+Finality runs from each claim's own submission until finalized notification and receipt lookup complete. Client launch is not node acceptance time or simultaneous execution. Launch targets were **1, 5 and 10 seconds**, respectively; the larger runs were not one-second bursts. Pool byte capacity stayed at **40 MiB**.
+
+| Claims | Launch target | Measured stage | Preparation |
+| ---: | ---: | ---: | ---: |
+| 20,000 | 1 s | 151.428 s | 1,138.347 s |
+| 40,000 | 5 s | 182.521 s | 977.091 s |
+| 100,000 | 10 s | 410.385 s | 2,440.797 s |
+
+Stage duration includes final state queries but excludes preparation, final aggregate receipt auditing and recovery. **Ring readiness is not applicable** to these claim-only experiments.
+
+### Hardware and observed constraint
+
+The runner reported **AMD EPYC 7B13, 16 cores / 32 logical CPUs and approximately 62.8 GiB RAM**. The entire local PreviewNet network and driver shared that machine.
+
+| Claims | Peak sampled host CPU busy | Minimum sampled available RAM | Peak sampled ready queue |
+| ---: | ---: | ---: | ---: |
+| 20,000 | 20.7% | 48.0 GiB | 20,000 |
+| 40,000 | 25.2% | 47.0 GiB | 37,637 |
+| 100,000 | 21.3% | 43.0 GiB | 88,185 |
+
+These are approximately five-second samples, not instantaneous peaks. Host CPU is an average across logical CPUs. One logical CPU reached approximately **98%** in the 100,000 run; low average CPU does not rule out serial execution limits. Service-cgroup limits were not captured correctly for the 20,000 run, so host specifications alone do not establish its effective quota.
+
+In the **100,000-claim run**:
+
+- All client-observed ready notifications arrived within **20.371 s**. Watched transactions peaked at **100,000**, a different measure from ready-queue depth.
+- There were **43 canonical receipt blocks**: 42 containing **2,363 claims** each, then **754** in the last block. All 42 full blocks reported `HitBlockWeightLimit`; the final block reported `NoMoreTransactions`.
+- Maximum canonical proposal duration was **2,970 ms**. This is authoring time, not measured PVF execution time. No service-cgroup OOM events were observed.
+
+Increasing the pool allowed more claims to wait; it did not increase claims per full block. **The next useful capacity measurement is a sustained submission rate with a stable queue.** This is a proposed measurement, not a completed result.
+
+### Capacity evidence and scope
+
+Downloaded evidence was checked again on **1 October 2026 UTC**: raw extrinsic hashes, block/index, `System.ExtrinsicSuccess` and expected `Coinage.CoinTransferred` events. Source coins disappeared; recipient coins had the expected instance/value and age increased from **0 to 1**. Fixture backing stayed unchanged. Root-seeded fixtures bypass normal issuance and held-backing setup; unchanged fixture backing does not prove normal held-backing accounting.
+
+These are claims, not top-ups or full wallet flows. Runs used the same engine, binaries and snapshot bytes, with zero added network delay. Fixture batching, query concurrency and launch targets changed explicitly; the 100,000 run also separated fixture snapshot reads from signing. These single-run observations do not establish production capacity guarantees, correct weights or PVF deadline compliance. Saved local RPC observations are not independent cryptographic consensus proofs. The launch window must not be extrapolated into a physical maximum or transactions-per-second claim.
+
+See the [pinned claim-capacity results guide][claim-capacity-guide] and the existing [claim scenario specification][claim-spec]. Download the hosted [compact summary and provenance JSON](evidence/claims-capacity-2026-10-01/summary-provenance.json) and its [SHA-256 checksum](evidence/claims-capacity-2026-10-01/SHA256SUMS.txt). The summary includes exact verification timestamps, test revisions, artifact IDs, parameters and source-file hashes; **it does not contain all raw evidence**.
+
+Full evidence is preserved locally under `coinage-evidence/claims-capacity-2026-10-01/`, separately from the hosted summary. GitHub artifacts are temporary and expire after **30 days**; local archives survive that expiry. The multi-gigabyte archive is not a website download. Original observations remain separate from later verification and from earlier top-up reconciliations.
+
 ## How verification works
 
 Each verified receipt matches a transaction hash to raw extrinsic bytes, its block and index, `System.ExtrinsicSuccess`, and the expected Coinage event. The reconciled top-up receipts also match the event’s actor, instance, denomination and amount to the fixture. Both local People nodes report the block as canonical and finalized. Separate state checks verify actor debits, held backing and voucher inclusion in built roots for top-ups, or source and recipient coin state for claims. These are trusted local-node observations, not independent cryptographic consensus proofs.
@@ -160,6 +214,9 @@ Saved evidence reconciled on **2026-09-30 at approximately 09:51 UTC**; no tests
 | [36705343718][claims-default] | [`0793ccc5df8b`](https://github.com/paritytech/polkadot-pop-e2e/commit/0793ccc5df8b4f6fbc410b68658ba4976466244d) | Claims; verified 2026-09-30 UTC: 8,192 receipts and matching states; 989 rejected, 819 dropped. Preserved full artifact: 11095640662. |
 | [36719621433][claims-paced] | [`3e2552a841a2`](https://github.com/paritytech/polkadot-pop-e2e/commit/3e2552a841a20ee8d3f209e0e7390d1976bc3c89) | Claims; verified 2026-09-30 UTC: 10,000 receipts and matching states; first-wave gate and recovery passed. Preserved artifact: 11105025693. |
 | [36719745986][claims-enlarged] | [`3e2552a841a2`](https://github.com/paritytech/polkadot-pop-e2e/commit/3e2552a841a20ee8d3f209e0e7390d1976bc3c89) | Claims; verified 2026-09-30 UTC: 10,000 receipts and matching states; enlarged pool confirmed, recovery passed. Preserved artifact: 11109621586. |
+| [36832069153][capacity-20000] | [`23a884c644db`](https://github.com/paritytech/polkadot-pop-e2e/commit/23a884c644dba50805f7b9373ad45d2529bb888f) | Claims; verified 2026-10-01 UTC: 20,000 receipts and matching states; unchanged fixture backing, recovery passed. Full artifact: 11148628985. |
+| [36836204912][capacity-40000] | [`39d2961bb794`](https://github.com/paritytech/polkadot-pop-e2e/commit/39d2961bb7940ee0dd07b970968bc4be034a9608) | Claims; verified 2026-10-01 UTC: 40,000 receipts and matching states; unchanged fixture backing, recovery passed. Full artifact: 11150407769. |
+| [36840043405][capacity-100000] | [`b7451cd74bbe`](https://github.com/paritytech/polkadot-pop-e2e/commit/b7451cd74bbe71799ab9bc8e01a69696ab043217) | Claims; verified 2026-10-01 UTC: 100,000 receipts and matching states; unchanged fixture backing, recovery passed. Full artifact: 11154045167. |
 
 Claim evidence is retained locally in `coinage-evidence/claims-10000-36705343718/` and `coinage-evidence/claims-comparison-2026-09-30/`, including `experiments.json`, verification outputs, exact test code and SHA-256 manifests. The comparison directory contains full artifacts for both successful runs. These local copies survive GitHub artifact expiry; they are not website downloads.
 
@@ -185,3 +242,8 @@ GitHub artifacts expire after **30 days**, on **October 29–30** for these runs
 [claims-default]: https://github.com/paritytech/polkadot-pop-e2e/actions/runs/36705343718
 [claims-paced]: https://github.com/paritytech/polkadot-pop-e2e/actions/runs/36719621433
 [claims-enlarged]: https://github.com/paritytech/polkadot-pop-e2e/actions/runs/36719745986
+
+[capacity-20000]: https://github.com/paritytech/polkadot-pop-e2e/actions/runs/36832069153
+[capacity-40000]: https://github.com/paritytech/polkadot-pop-e2e/actions/runs/36836204912
+[capacity-100000]: https://github.com/paritytech/polkadot-pop-e2e/actions/runs/36840043405
+[claim-capacity-guide]: https://github.com/paritytech/polkadot-pop-e2e/blob/dfdc44a75bc91ea1610742b42b4e5278f4ad42fd/ci/previewnet/burst-results.md
