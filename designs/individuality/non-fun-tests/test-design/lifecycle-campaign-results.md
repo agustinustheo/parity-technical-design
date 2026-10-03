@@ -24,7 +24,7 @@ Passes below require saved raw extrinsics, canonical block/index matches, succes
 | A40,000 | 44,000 | Runner lost during driver step | 40,000 splits + 40,000 claims verified; CI shutdown timeout | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111118958519) |
 | A100,000 | 110,000 | Download failed before submission | Recovered: 100,000 splits + 100,000 claims; CI pass | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111148834636) |
 | B20,000 | 22,000 | Pass: 20,000 loads and ready members | Passed again | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111156205276) |
-| B40,000 | 44,000 | Runner lost during driver step | Runner lost again; receipt counts unknown | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111161539758) |
+| B40,000 | 44,000 | Runner lost during driver step | Targeted rerun reports 40,000 receipts and ready members; CI shutdown failure; offline audit pending | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37121458129/job/111198244482) |
 | B100,000 | 110,000 | Download failed before submission | Incomplete: 60,990 receipts after reconciliation; 39,917 observed ready | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111181352051) |
 
 B10,000 attempt 2 has **8,724 verified receipts after reconciliation**, leaving 1,276 without a verified receipt. Reconciliation found 245 additional successful calls in saved finalized blocks. Finality percentiles below retain the original 8,479-watch population; no latency is invented for those 245 calls.
@@ -33,7 +33,7 @@ At its last saved readiness observation, B10,000 had 5,002 observed-ready member
 
 A20,000 attempt 2 verified all splits, but its 1,005.179 ms launch exceeded the 1,000 ms target. The old timing gate withheld claims. The correction allows claims after valid receipts and state while retaining the timing failure. A40,000 completed both waves and state checks; its process then stayed alive until the 180-minute timeout. Recovery was measured after that timeout, not immediately after the workload.
 
-B40,000 lost runner communication in both attempts. Attempt 2 has no final artifact and its log endpoint returns HTTP 404. Submitted, receipt-verified and readiness counts are unknown. The available evidence does not establish the cause of the runner loss.
+B40,000 lost runner communication in both original campaign attempts. Attempt 2 has no final artifact and its log endpoint returns HTTP 404. Its submitted, receipt-verified and readiness counts remain unknown. The available evidence does not establish the cause of those runner losses. The targeted retry below is a separate observation.
 
 B100,000 attempt 2 submitted all 100,000 calls in 3.692 s. Its [original audit](evidence/lifecycle-2026-10-03/b100000-original-observation.json) reports 60,982 receipts. [Offline reconciliation](evidence/lifecycle-2026-10-03/b100000-receipts-reconciliation.json) found eight additional successful calls, for **60,990 verified receipts** and 39,010 without a verified receipt. Finality percentiles retain the original 60,982-watch population. [The readiness check](evidence/lifecycle-2026-10-03/b100000-readiness-verification.json) verifies 39,917 observed-ready members at a cutoff of 1,797.949 s. The 60,083 unobserved members are unresolved. Recovery passed in 65.179 s.
 
@@ -138,7 +138,7 @@ Each successful case artifact contains its fixture, per-wave `*-audit.json`, `*-
 
 ## Pending work
 
-[B40,000 bounded retry](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37121458129) is running alone on `ba4bdee5c1a4a7ed725e6a1f34653b7bb39b774c`, with the same 44,000-entry pool. The two earlier runner losses left no saved transaction outcomes; this retry is needed to establish that workload. No success is inferred from its job status.
+[B40,000 bounded retry](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37121458129) finished on `ba4bdee5c1a4a7ed725e6a1f34653b7bb39b774c`, with the same 44,000-entry pool. Its saved summaries report all 40,000 receipts and ready members, and the CI receipt/state verifier passed. CI failed afterward: the two-minute shutdown guard recorded one remaining TCP socket and a prior exit code of zero. Recovery passed. Full archive preservation and the independent offline audit are still in progress; the reported workload counts are not yet added to the audited result tables.
 
 The runner scheduler started another automatic retry of the old campaign. It was [cancelled during client validation](evidence/lifecycle-2026-10-03/duplicate-attempt-3-cancellation.json), before network preparation or a new workload. Original attempts 1 and 2 remain separate evidence.
 
