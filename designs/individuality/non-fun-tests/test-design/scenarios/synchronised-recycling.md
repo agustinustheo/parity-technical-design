@@ -84,3 +84,5 @@ Apply pool overrides to both People collators and save their startup arguments. 
 Each case has fresh fixture state. Preserve a failed case and continue the sequence, including failures caused by the driver or runner. Distinguish requested, submitted, receipt-verified and ready counts. A CI job that fails before submission does not satisfy the workload attempt; repair the setup and rerun that case. Deadline and launch-window changes are recorded settings, not evidence of a universal capacity ceiling.
 
 Implementation: [campaign workflow](https://github.com/paritytech/polkadot-pop-e2e/blob/feat/th-coinage-lifecycle-pilots/.github/workflows/coinage-lifecycle-campaign.yml), [driver and evidence guide](https://github.com/paritytech/polkadot-pop-e2e/blob/feat/th-coinage-lifecycle-pilots/ci/previewnet/lifecycle-pilots.md).
+
+Observed outcomes: [lifecycle campaign results](../lifecycle-campaign-results.md). Load receipts and observed ring readiness are separate results.

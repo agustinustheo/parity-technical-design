@@ -61,7 +61,7 @@ The barrier deliberately separates the two waves. It does not reproduce the apps
 - Publish payment count and extrinsic count separately. A successful split followed by an unresolved claim is an incomplete payment, not a successful one.
 - Preserve per-wave counts, launch windows, p50/p95/max client-observed finality, signed calls, block evidence, resource samples and recovery results. Report missing metrics explicitly.
 
-Stop on a wrong state, unresolved receipt, missed launch target, node failure or 60-second finality stall. Preserve the partial outcome and do not start the claim wave if the split audit fails. Observe continued finality and both collators after the pilot.
+Stop on a wrong state, unresolved receipt, node failure or 60-second finality stall. A missed launch target fails the burst timing criterion and is recorded as generator-limited. If all split receipts and state checks pass, continue the claim wave to measure the complete payment; this does not turn the timing failure into a pass. Observe continued finality and both collators after the pilot.
 
 This tests output creation and dependent claims. Voucher unloads, person proofs, production coin selection and shared recycler contention remain outside its scope. The [runtime split and transfer implementation][pilot-runtime] defines the path; the executed runtime metadata and binary revisions must also be recorded.
 
@@ -87,3 +87,5 @@ Apply pool overrides to both People collators and save their startup arguments. 
 Each case has fresh fixture state. Preserve a failed case and continue the sequence, including failures caused by the driver or runner. Distinguish requested, submitted, receipt-verified and ready counts. A CI job that fails before submission does not satisfy the workload attempt; repair the setup and rerun that case. Deadline and launch-window changes are recorded settings, not evidence of a universal capacity ceiling.
 
 Implementation: [campaign workflow](https://github.com/paritytech/polkadot-pop-e2e/blob/feat/th-coinage-lifecycle-pilots/.github/workflows/coinage-lifecycle-campaign.yml), [driver and evidence guide](https://github.com/paritytech/polkadot-pop-e2e/blob/feat/th-coinage-lifecycle-pilots/ci/previewnet/lifecycle-pilots.md).
+
+Observed outcomes: [lifecycle campaign results](../lifecycle-campaign-results.md). This records original attempts, reruns and evidence limits separately.
