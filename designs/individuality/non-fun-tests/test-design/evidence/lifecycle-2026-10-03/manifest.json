@@ -1,5 +1,5 @@
 {
-  "recordedAt": "2026-10-03T10:22:00.549532+00:00",
+  "recordedAt": "2026-10-03T11:47:23.949319+00:00",
   "run": "https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758",
   "artifacts": [
     {
@@ -221,6 +221,28 @@
       "expiresAt": "2026-11-02T00:43:31Z",
       "sizeBytes": 298,
       "artifactUrl": "https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/artifacts/11259009939"
+    },
+    {
+      "artifact": "coinage-recycle-100-burst-default-pilot-37116007842-1",
+      "id": 11272941802,
+      "run": "https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37116007842",
+      "commit": "ba4bdee5c1a4a7ed725e6a1f34653b7bb39b774c",
+      "zipSha256": "b1607fc60b94bdeb320cde2b6eb4608bf475ba5f37bbaf25883595f8c81d69c7",
+      "downloadedAt": "2026-10-03T11:29:42.958277+00:00",
+      "expiresAt": "2026-11-02T11:29:17Z",
+      "sizeBytes": 12346821,
+      "artifactUrl": "https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37116007842/artifacts/11272941802"
+    },
+    {
+      "artifact": "coinage-recycle-100000-burst-enlarged-pilot-37029048758-2",
+      "id": 11272711030,
+      "run": "https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758",
+      "commit": "ed563b14f5bc99c82c0158cd6ece6f9affff3f46",
+      "zipSha256": "e9df8c2b604e029de74954a32970c9d1adbb10c931ecb6c983cbc4fdc96b7215",
+      "downloadedAt": "2026-10-03T11:14:15.974031+00:00",
+      "expiresAt": "2026-11-02T11:13:25Z",
+      "sizeBytes": 367271624,
+      "artifactUrl": "https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/artifacts/11272711030"
     }
   ],
   "selectedFileChecksums": [
@@ -324,8 +346,56 @@
     {
       "file": "observations.json",
       "sha256": "582322a6554eab10938b232c7f7e4185667214c67e674214c83e1099efe3e881"
+    },
+    {
+      "file": "b100000-original-observation.json",
+      "sha256": "8831d45e7a696113df1b0872e8de84d0811ea15f3aa2848bb7964dedd727067e",
+      "sourceFile": "b100000-original-observation.json"
+    },
+    {
+      "file": "b100-targeted-verification.txt",
+      "sha256": "8e66be565b85fbafa89aebf78319e89e28fed83272b7b04b9ceb477aefbf5ec2",
+      "sourceFile": "lifecycle-37116007842/b100-verification.txt"
+    },
+    {
+      "file": "targeted-observations.json",
+      "sha256": "10474dc53754e6e7eaf40249d9bf1332ae482874a7b39916350acbf6976d2838",
+      "sourceFile": "lifecycle-37116007842/campaign-results.json"
+    },
+    {
+      "file": "b100000-state-observation.json",
+      "sha256": "6c0a829eaf6729e053e3c70ccf4b74a00f8d7505881e8dbf4c69eb36d22a27cc",
+      "sourceFile": "b100000-state-observation.json"
+    },
+    {
+      "file": "b100000-block-coverage.json",
+      "sha256": "cc2a88eda90c5872da8b8295a8f632088d6cf2182d673001cb9ed865e9cd1526",
+      "sourceFile": "b100000-block-coverage.json"
+    },
+    {
+      "file": "b100000-receipts-reconciliation.json",
+      "sha256": "997b03d926245335bfd9be096f259448f9358f00ac24ac57f04745617f75e2be",
+      "sourceFile": "b100000-full-receipts-verification.json"
+    },
+    {
+      "file": "b100000-readiness-verification.json",
+      "sha256": "8eccbcb02d0c4ca2f5ec09b3eac23e5cef1742c465f538c328593c10c53125b8",
+      "sourceFile": "b100000-full-readiness-verification.json"
+    },
+    {
+      "file": "b100000-reconciled-receipts.json",
+      "sha256": "fea4915d459c96561ae9dbb200a897d7be95f821213c6ea815e2f96b22fb880d",
+      "sourceFile": "coinage-recycle-100000-burst-enlarged-pilot-37029048758-2-recycle-pilot-recycle-reconciled-receipts.json"
+    },
+    {
+      "file": "b100000-resource-observations.json",
+      "sha256": "7938d252304209a89e2e42399dcf914a83cc9c655cacdf1ceda59ed802d45e29",
+      "sourceFile": "b100000-resource-observations.json"
     }
   ],
   "rawArchiveLocation": "~/Projects/parity/coinage-test-evidence/lifecycle-37029048758",
-  "scope": "Selected summaries, verification outputs and hashes are committed. Raw archives and block/state evidence are retained locally; hashes alone do not reproduce an audit."
+  "scope": "Selected summaries, verification outputs and hashes are committed. Raw archives and block/state evidence are retained locally; hashes alone do not reproduce an audit.",
+  "additionalRawArchiveLocations": [
+    "~/Projects/parity/coinage-test-evidence/lifecycle-37116007842"
+  ]
 }

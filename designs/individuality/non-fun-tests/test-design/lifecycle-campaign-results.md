@@ -13,7 +13,7 @@ Passes below require saved raw extrinsics, canonical block/index matches, succes
 | A100 | Default | Pass: 100 splits + 100 claims | Original pass | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/110910965456) |
 | A1,000 | Default | Runner lost during setup | Recovered: 1,000 splits + 1,000 claims | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111088217155) |
 | A10,000 | Default | 8,192 split receipts; claims withheld | Same incomplete result | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111091066111) |
-| B100 | Default | Runner lost during startup | Download failed before submission; rerun queued | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111094179942) |
+| B100 | Default | Runner lost during startup | Recovered in targeted rerun: 100 receipts and ready members | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37116007842/job/111191304293) |
 | B1,000 | Default | Pass: 1,000 loads and ready members | Passed again | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111094675197) |
 | B10,000 | Default | Runner lost during startup | 8,479 original receipts + 245 reconciled; 5,002 observed ready | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111097683539) |
 | A8,000 + 2,000 | Default | Pass: 10,000 splits + 10,000 claims | Passed again | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111101176047) |
@@ -25,7 +25,7 @@ Passes below require saved raw extrinsics, canonical block/index matches, succes
 | A100,000 | 110,000 | Download failed before submission | Recovered: 100,000 splits + 100,000 claims; CI pass | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111148834636) |
 | B20,000 | 22,000 | Pass: 20,000 loads and ready members | Passed again | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111156205276) |
 | B40,000 | 44,000 | Runner lost during driver step | Runner lost again; receipt counts unknown | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111161539758) |
-| B100,000 | 110,000 | Download failed before submission | Running; no result yet | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111181352051) |
+| B100,000 | 110,000 | Download failed before submission | Incomplete: 60,990 receipts after reconciliation; 39,917 observed ready | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111181352051) |
 
 B10,000 attempt 2 has **8,724 verified receipts after reconciliation**, leaving 1,276 without a verified receipt. Reconciliation found 245 additional successful calls in saved finalized blocks. Finality percentiles below retain the original 8,479-watch population; no latency is invented for those 245 calls.
 
@@ -34,6 +34,23 @@ At its last saved readiness observation, B10,000 had 5,002 observed-ready member
 A20,000 verified all splits, but its 1,005.179 ms launch exceeded the 1,000 ms target. The old timing gate withheld claims. The correction allows claims after valid receipts and state while retaining the timing failure. A40,000 completed both waves and state checks; its process then stayed alive until the 180-minute timeout. Recovery was measured after that timeout, not immediately after the workload.
 
 B40,000 lost runner communication in both attempts. Attempt 2 has no final artifact and its log endpoint returns HTTP 404. Submitted, receipt-verified and readiness counts are unknown. The available evidence does not establish the cause of the runner loss.
+
+B100,000 attempt 2 submitted all 100,000 calls in 3.692 s. Its [original audit](evidence/lifecycle-2026-10-03/b100000-original-observation.json) reports 60,982 receipts. [Offline reconciliation](evidence/lifecycle-2026-10-03/b100000-receipts-reconciliation.json) found eight additional successful calls, for **60,990 verified receipts** and 39,010 without a verified receipt. Finality percentiles retain the original 60,982-watch population. [The readiness check](evidence/lifecycle-2026-10-03/b100000-readiness-verification.json) verifies 39,917 observed-ready members at a cutoff of 1,797.949 s. The 60,083 unobserved members are unresolved. Recovery passed in 65.179 s.
+
+[State observations](evidence/lifecycle-2026-10-03/b100000-state-observation.json) show 61,851 member entries and 38,149 remaining source coins at that cutoff; backing stayed at 200,001 units. Of 869 invalid watches, eight now have verified receipts and 861 have expected member state but no verified receipt. The saved raw block set omits blocks 173363, 173365 and 173366 within its observed range. State alone cannot fill the receipt gap. The overall stage summary was not written after the audit failed, so completed stage duration is unavailable; the per-wave settlement window was 1,801.619 s.
+
+## Targeted rerun
+
+[Run 37116007842](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37116007842) uses `ba4bdee5c1a4a7ed725e6a1f34653b7bb39b774c`. These observations are separate from the original campaign attempts.
+
+B100 recovered after two setup failures. The [offline check](evidence/lifecycle-2026-10-03/b100-targeted-verification.txt) verifies all 100 receipts, expected coin-to-member state and all 100 readiness observations. Backing stayed at 201 units; recovery passed in 64.868 s. The [saved observations](evidence/lifecycle-2026-10-03/targeted-observations.json) include resource samples.
+
+| Case | Population | Launch (s) | p50 (s) | p95 (s) | max (s) |
+| --- | --- | --- | --- | --- | --- |
+| B100 finality | 100 receipts | 0.006 | 35.676 | 35.677 | 35.677 |
+| B100 readiness | 100 ready members | — | 50.339 | 50.341 | 50.341 |
+
+Its stage took 55.343 s, with a readiness cutoff at 50.341 s. Definitions and exclusions are the same as below. A20,000 is running next; it has no verified result yet.
 
 ## Timings from attempt 2
 
@@ -47,6 +64,7 @@ All values are seconds. Finality is client submission to successful finalized re
 | B10,000 paced / wave-1-recycle | 8,000 | 0.316 | 121.806 | 197.826 | 205.913 |
 | B10,000 paced / wave-2-recycle | 2,000 | 0.073 | 46.644 | 66.690 | 70.694 |
 | B20,000 enlarged / recycle | 20,000 | 0.799 | 363.694 | 615.855 | 636.100 |
+| B100,000 enlarged / recycle (partial) | 60,982 | 3.692 | 925.565 | 1709.561 | 1794.058 |
 | A1,000 default / claim | 1,000 | 0.051 | 26.155 | 26.173 | 26.186 |
 | A1,000 default / split | 1,000 | 0.064 | 29.805 | 29.822 | 29.822 |
 | A10,000 default / split | 8,192 | 0.516 | 41.397 | 49.337 | 53.209 |
@@ -69,6 +87,7 @@ All values are seconds. Finality is client submission to successful finalized re
 | B10,000 burst enlarged | 10,000 / 10,000 | 216.573 | 353.636 | 384.043 | 389.279 |
 | B10,000 paced default | 10,000 / 10,000 | 165.930 | 317.952 | 343.236 | 480.183 |
 | B20,000 burst enlarged | 20,000 / 20,000 | 524.207 | 809.979 | 845.925 | 851.216 |
+| B100,000 burst enlarged (partial) | 39,917 / 100,000 | 992.583 | 1718.515 | 1797.529 | Unavailable: no stage summary |
 
 Stage duration starts at the first pilot submission and includes its audits, inter-wave claim signing and readiness observation. It excludes network setup, fixture preparation, the one-actor smoke and recovery. A40,000 took 435.545 s and A100,000 took 1,041.877 s through their workload checks; the former subsequently hung during shutdown.
 
@@ -98,6 +117,7 @@ These are sampled peaks. Driver RSS includes fixture preparation and smoke. The 
 | A40,000 | 2.033 | 30.416 | 40,000 | 33.862 s / 3582 |
 | A100,000 | 1.992 | 30.870 | 100,000 | 97.714 s / 731 |
 | B20,000 | 1.558 | 19.287 | 20,000 | 62.044 s / 424 |
+| B100,000 enlarged | 4.390 | 31.964 | 100007 | 400.920 s / 1014 |
 
 These observations do not measure runtime weight accuracy, block execution wall time or PVF deadline compliance. The watched-plus-unwatched gauge is not the configured ready-pool capacity. Resource observations from successful jobs do not diagnose missing-runner failures.
 
@@ -105,12 +125,12 @@ These observations do not measure runtime weight accuracy, block execution wall 
 
 PreviewNet engine `7907a3bfa7b2e47535a74b7920086a05ca94773a`; snapshot bundle run `36614342201`, SHA-256 `edab76b213657e499ae9fcb95673a2bf4ca717b78b00caf3d7783fc18b562b4f`. Six relay validators, two People collators and the snapshot's other parachains share one runner. Artificial delay is zero. The A100,000 artifact records 32 visible CPUs with affinity 0–31 and no explicit CPU or memory cap in the runner cgroup; this does not establish unlimited physical memory. Enlarged pools have a 262,144 KiB byte budget on both People collators; default cases apply no pool override.
 
-The [evidence manifest](evidence/lifecycle-2026-10-03/manifest.json) records artifact IDs, hashes, expiry times and verification files. The [observation snapshot](evidence/lifecycle-2026-10-03/observations.json) records counts, timing populations, backing and resource scope. Raw archives, block bodies, signed calls and state responses are retained at `~/Projects/parity/coinage-test-evidence/lifecycle-37029048758`. They are not embedded in this page. The committed summaries and hashes alone cannot reproduce a full receipt audit.
+The [evidence manifest](evidence/lifecycle-2026-10-03/manifest.json) records artifact IDs, hashes, expiry times and verification files. The [observation snapshot](evidence/lifecycle-2026-10-03/observations.json) records counts, timing populations, backing and resource scope. Raw archives, block bodies, signed calls and state responses are retained at `~/Projects/parity/coinage-test-evidence/lifecycle-37029048758` and `lifecycle-37116007842`. They are not embedded in this page. The committed summaries and hashes alone cannot reproduce a full receipt audit.
 
 Each successful case artifact contains its fixture, per-wave `*-audit.json`, `*-receipts.json`, `*-state.json`, block evidence, `*-summary.json`, resource samples and `recovery.json`. Recycling also saves `*-readiness.json` and `*-readiness-evidence.jsonl`. The manifest links each artifact; GitHub access and retention limits still apply.
 
 ## Pending work
 
-[Targeted rerun](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37116007842) is queued on `ba4bdee5c1a4a7ed725e6a1f34653b7bb39b774c` for B100 and A20,000. It shares the campaign concurrency group and will wait for the active B100,000 job. It includes download retries, preflight preservation, the corrected timing gate and a bounded shutdown diagnostic. These are mitigations; they do not establish why a runner disappeared.
+[Targeted rerun](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37116007842) is running on `ba4bdee5c1a4a7ed725e6a1f34653b7bb39b774c`. B100 has passed; A20,000 is now running. It shares the campaign concurrency group and started after B100,000 finished. It includes download retries, preflight preservation, the corrected timing gate and a bounded shutdown diagnostic. These are mitigations; they do not establish why a runner disappeared.
 
-B100,000 still needs final artifact verification. B40,000 remains an attempt with unavailable outcome counts. No production capacity ceiling is claimed.
+B100,000 evidence is preserved and its receipt and readiness subsets are verified. Its missing receipts and unobserved readiness remain unresolved. B40,000 remains an attempt with unavailable outcome counts. No production capacity ceiling is claimed.
