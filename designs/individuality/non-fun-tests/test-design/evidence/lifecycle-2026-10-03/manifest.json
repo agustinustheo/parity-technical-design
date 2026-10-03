@@ -1,5 +1,5 @@
 {
-  "recordedAt": "2026-10-03T12:03:56.692611+00:00",
+  "recordedAt": "2026-10-03T12:21:05.494877+00:00",
   "run": "https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758",
   "artifacts": [
     {
@@ -422,6 +422,11 @@
       "file": "targeted-observations.json",
       "sha256": "b88ab6c3c2fdae1d8c3eeb86766375e0da9e1d24b4deb0956b90f6a16a548bd4",
       "sourceFile": "lifecycle-37116007842/campaign-results.json"
+    },
+    {
+      "file": "saved-configuration-verification.json",
+      "sha256": "e4e370be81c7a3befc06e9853e6097cce56f4c990b9127788168ca5e66222454",
+      "sourceFile": "lifecycle-37029048758/saved-configuration-verification.json"
     }
   ],
   "rawArchiveLocation": "~/Projects/parity/coinage-test-evidence/lifecycle-37029048758",
