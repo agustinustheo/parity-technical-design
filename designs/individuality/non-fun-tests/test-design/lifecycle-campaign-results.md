@@ -1,8 +1,10 @@
-# PreviewNet lifecycle campaign results (in progress)
+# PreviewNet lifecycle campaign results
 
 Evidence checked on 2026-10-03 UTC. [Campaign attempt 2](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/attempts/2); test commit [`ed563b1`](https://github.com/paritytech/polkadot-pop-e2e/commit/ed563b14f5bc99c82c0158cd6ece6f9affff3f46). Original attempts and attempt 2 are separate observations.
 
 A is [split and claim](scenarios/payment-burst.md): two calls per actor, in separate waves. B is [recycling](scenarios/synchronised-recycling.md): one coin load per actor, followed by observed ring readiness. No campaign workloads run concurrently.
+
+All 16 requested cases have transaction evidence. The [completion audit](evidence/lifecycle-2026-10-03/campaign-completion-audit.json) records 12 workload passes, one launch-timing failure and three incomplete workloads. Two workload passes have separate CI shutdown failures. The campaign is complete; this is not a claim that every test passed.
 
 ## Outcomes
 
@@ -24,7 +26,7 @@ Passes below require saved raw extrinsics, canonical block/index matches, succes
 | A40,000 | 44,000 | Runner lost during driver step | 40,000 splits + 40,000 claims verified; CI shutdown timeout | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111118958519) |
 | A100,000 | 110,000 | Download failed before submission | Recovered: 100,000 splits + 100,000 claims; CI pass | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111148834636) |
 | B20,000 | 22,000 | Pass: 20,000 loads and ready members | Passed again | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111156205276) |
-| B40,000 | 44,000 | Runner lost during driver step | Targeted rerun reports 40,000 receipts and ready members; CI shutdown failure; offline audit pending | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37121458129/job/111198244482) |
+| B40,000 | 44,000 | Runner lost during driver step | Recovered: 40,000 verified receipts and ready members; CI shutdown failure | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37121458129/job/111198244482) |
 | B100,000 | 110,000 | Download failed before submission | Incomplete: 60,990 receipts after reconciliation; 39,917 observed ready | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111181352051) |
 
 B10,000 attempt 2 has **8,724 verified receipts after reconciliation**, leaving 1,276 without a verified receipt. Reconciliation found 245 additional successful calls in saved finalized blocks. Finality percentiles below retain the original 8,479-watch population; no latency is invented for those 245 calls.
@@ -55,6 +57,15 @@ B100 recovered after two setup failures. The [offline check](evidence/lifecycle-
 B100 took 55.343 s, with a readiness cutoff at 50.341 s. Definitions and exclusions are the same as below.
 
 A20,000 now has [40,000 verified receipts and expected state](evidence/lifecycle-2026-10-03/a20000-targeted-workload-verification.json): 20,000 splits followed by 20,000 claims. Backing stayed at 80,001 units; recovery passed in 64.846 s. CI remains failed because the split launch took 1,099.643 ms against a 1,000 ms target. The corrected driver completed valid claims despite that timing miss. Stage duration was 225.207 s.
+
+[B40,000 run 37121458129](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37121458129) uses the same `ba4bdee5c1a4a7ed725e6a1f34653b7bb39b774c` commit and a 44,000-entry pool. The [offline receipt and state check](evidence/lifecycle-2026-10-03/b40000-targeted-verification.txt) verifies all 40,000 submitted calls; [receipt reconciliation](evidence/lifecycle-2026-10-03/b40000-targeted-receipts-verification.json) adds no extra receipts. The [readiness check](evidence/lifecycle-2026-10-03/b40000-targeted-readiness-verification.json) verifies all 40,000 members across 192 saved snapshots. No receipts or readiness observations remain unresolved in this run.
+
+| B40,000 measurement | Population | Launch (s) | p50 (s) | p95 (s) | max (s) |
+| --- | --- | --- | --- | --- | --- |
+| Finality | 40,000 receipts | 1.428 | 606.384 | 1095.313 | 1143.690 |
+| Readiness | 40,000 ready members | — | 910.867 | 1485.140 | 1558.509 |
+
+The readiness cutoff was 1,558.766 s at `0xed5c8167534f7bceb9ccc50c8decc4c94cb0efafa99a24298f3ac43afc1332c7`. Stage duration was 1,563.826 s, excluding 533.362 s of fixture preparation and the other exclusions below. Backing stayed at 80,001 units. [Recovery passed](evidence/lifecycle-2026-10-03/b40000-targeted-recovery.json) in 64.917 s, after the shutdown guard fired. The [shutdown diagnostic](evidence/lifecycle-2026-10-03/b40000-targeted-shutdown-error.json) records a prior exit code of zero and one remaining TCP socket after 120.005 s. Its owner is not established. The workload passed; CI remains failed because shutdown did not finish.
 
 ## Timings from attempt 2
 
@@ -123,6 +134,7 @@ Rows use campaign attempt 2 unless marked as the corrected rerun. These are samp
 | B20,000 | 1.558 | 19.287 | 20,000 | 62.044 s / 424 |
 | B100,000 enlarged | 4.390 | 31.964 | 100007 | 400.920 s / 1014 |
 | A20,000 corrected rerun | 1.290 | 19.588 | 20,000 | 10.011 s / 255 |
+| B40,000 targeted rerun | 2.431 | 25.027 | 40,004 | 133.795 s / 762 |
 
 These observations do not measure runtime weight accuracy, block execution wall time or PVF deadline compliance. The watched-plus-unwatched gauge is not the configured ready-pool capacity. Resource observations from successful jobs do not diagnose missing-runner failures.
 
@@ -130,15 +142,15 @@ These observations do not measure runtime weight accuracy, block execution wall 
 
 PreviewNet engine `7907a3bfa7b2e47535a74b7920086a05ca94773a`; snapshot bundle run `36614342201`, SHA-256 `edab76b213657e499ae9fcb95673a2bf4ca717b78b00caf3d7783fc18b562b4f`. Six relay validators, two People collators and the snapshot's other parachains share one runner. Artificial delay is zero. The A100,000 artifact records 32 visible CPUs with affinity 0–31 and no explicit CPU or memory cap in the runner cgroup; this does not establish unlimited physical memory. Enlarged pools have a 262,144 KiB byte budget on both People collators; default cases apply no pool override.
 
-The [saved configuration check](evidence/lifecycle-2026-10-03/saved-configuration-verification.json) verifies validator and collator counts, pool arguments, state retention, OCW settings and engine/snapshot pins in all 22 preserved workload artifacts available at 12:20 UTC, including the targeted B100 and A20,000 reruns. The B40,000 retry has not yet saved its workload artifact. This check covers configured node arguments and provenance; it does not measure runtime performance.
+The [saved configuration check](evidence/lifecycle-2026-10-03/saved-configuration-verification.json) verifies validator and collator counts, pool arguments, state retention, OCW settings and engine/snapshot pins in all 23 preserved workload artifacts, including the targeted B100, A20,000 and B40,000 reruns. This check covers configured node arguments and provenance; it does not measure runtime performance. The [case inventory](evidence/lifecycle-2026-10-03/case-inventory-check.json) confirms actual submissions for all 16 required configurations. The [schedule check](evidence/lifecycle-2026-10-03/sequential-schedule-verification.json) finds no overlapping driver steps in 27 recorded executions. Runner loss does not prove that orphaned host processes stopped.
 
-The [evidence manifest](evidence/lifecycle-2026-10-03/manifest.json) records artifact IDs, hashes, expiry times and verification files. The [observation snapshot](evidence/lifecycle-2026-10-03/observations.json) records counts, timing populations, backing and resource scope. Raw archives, block bodies, signed calls and state responses are retained at `~/Projects/parity/coinage-test-evidence/lifecycle-37029048758` and `lifecycle-37116007842`. They are not embedded in this page. The committed summaries and hashes alone cannot reproduce a full receipt audit.
+The [evidence manifest](evidence/lifecycle-2026-10-03/manifest.json) records artifact IDs, hashes, expiry times and verification files. The [observation snapshot](evidence/lifecycle-2026-10-03/observations.json) and [B40,000 targeted observations](evidence/lifecycle-2026-10-03/b40000-targeted-observations.json) record counts, timing populations, backing and resource scope. Raw archives, block bodies, signed calls and state responses are retained at `~/Projects/parity/coinage-test-evidence/lifecycle-37029048758`, `lifecycle-37116007842` and `lifecycle-37121458129`. They are not embedded in this page. The committed summaries and hashes alone cannot reproduce a full receipt audit.
 
 Each successful case artifact contains its fixture, per-wave `*-audit.json`, `*-receipts.json`, `*-state.json`, block evidence, `*-summary.json`, resource samples and `recovery.json`. Recycling also saves `*-readiness.json` and `*-readiness-evidence.jsonl`. The manifest links each artifact; GitHub access and retention limits still apply.
 
-## Pending work
+## Limitations
 
-[B40,000 bounded retry](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37121458129) finished on `ba4bdee5c1a4a7ed725e6a1f34653b7bb39b774c`, with the same 44,000-entry pool. Its saved summaries report all 40,000 receipts and ready members, and the CI receipt/state verifier passed. CI failed afterward: the two-minute shutdown guard recorded one remaining TCP socket and a prior exit code of zero. Recovery passed. Full archive preservation and the independent offline audit are still in progress; the reported workload counts are not yet added to the audited result tables.
+All requested configurations were attempted with real submissions, including repaired setup failures. Successful workload counts were checked against raw receipts and state, rather than CI status. Original failures, targeted reruns and later reconciliation remain separate observations. A40,000 and B40,000 retain their CI shutdown failures; fixing those defects was not required for this campaign's workload-attempt completion.
 
 The runner scheduler started another automatic retry of the old campaign. It was [cancelled during client validation](evidence/lifecycle-2026-10-03/duplicate-attempt-3-cancellation.json), before network preparation or a new workload. Original attempts 1 and 2 remain separate evidence.
 

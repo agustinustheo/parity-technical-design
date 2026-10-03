@@ -1,5 +1,5 @@
 {
-  "recordedAt": "2026-10-03T12:21:05.494877+00:00",
+  "recordedAt": "2026-10-03T13:31:37.806751+00:00",
   "run": "https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758",
   "artifacts": [
     {
@@ -254,6 +254,17 @@
       "expiresAt": "2026-11-02T11:49:27Z",
       "sizeBytes": 66928042,
       "artifactUrl": "https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37116007842/artifacts/11273650139"
+    },
+    {
+      "artifact": "coinage-recycle-40000-burst-enlarged-pilot-37121458129-1",
+      "id": 11274353408,
+      "run": "https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37121458129",
+      "commit": "ba4bdee5c1a4a7ed725e6a1f34653b7bb39b774c",
+      "zipSha256": "042b7443bf611411a3040f7c384a208a300b4d2645aa3f15058194f2f2239e4f",
+      "downloadedAt": "2026-10-03T12:49:50.281269+00:00",
+      "expiresAt": "2026-11-02T12:49:11Z",
+      "sizeBytes": 284632654,
+      "artifactUrl": "https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37121458129/artifacts/11274353408"
     }
   ],
   "selectedFileChecksums": [
@@ -425,13 +436,59 @@
     },
     {
       "file": "saved-configuration-verification.json",
-      "sha256": "e4e370be81c7a3befc06e9853e6097cce56f4c990b9127788168ca5e66222454",
+      "sha256": "03079e6ad6daee25759ea56b5cd62909a4b513c3722353794ed64a2955a94192",
       "sourceFile": "lifecycle-37029048758/saved-configuration-verification.json"
+    },
+    {
+      "file": "b40000-targeted-verification.txt",
+      "sha256": "c978b0e7b5e71a8b1ca23bc275cdd4d3eca2f3d58465b8d506ee669039800663",
+      "sourceFile": "lifecycle-37121458129/b40000-verification.txt"
+    },
+    {
+      "file": "b40000-targeted-receipts-verification.json",
+      "sha256": "0cacc61819450131fc0172d226f12a1fc9b9a40c45499df013d229237ef0b155",
+      "sourceFile": "lifecycle-37121458129/coinage-recycle-40000-burst-enlarged-pilot-37121458129-1-recycle-pilot-recycle-subset-verification.json"
+    },
+    {
+      "file": "b40000-targeted-readiness-verification.json",
+      "sha256": "257ef44dea86d71131b1f463a2d4130e1d8fbcf7fb2bafa3c36cf1cb975c450b",
+      "sourceFile": "lifecycle-37121458129/coinage-recycle-40000-burst-enlarged-pilot-37121458129-1-readiness-subset-verification.json"
+    },
+    {
+      "file": "b40000-targeted-shutdown-error.json",
+      "sha256": "0f34a220e760350bec5a747d9bfdad2ca6b99b5214a75233ef0bd47e2c7adeb7",
+      "sourceFile": "lifecycle-37121458129/coinage-recycle-40000-burst-enlarged-pilot-37121458129-1/lifecycle-shutdown-error.json"
+    },
+    {
+      "file": "b40000-targeted-recovery.json",
+      "sha256": "7562295412da14e606b4f1e9bee6788afa345efc91e791b8609a14b0794a0a74",
+      "sourceFile": "lifecycle-37121458129/coinage-recycle-40000-burst-enlarged-pilot-37121458129-1/recovery.json"
+    },
+    {
+      "file": "case-inventory-check.json",
+      "sha256": "0a9f92f6dfba4d5c9ab83d04ff8498e2a34e8f9a43ecfc88f4e1d7c7e05fe305",
+      "sourceFile": "lifecycle-37029048758/case-inventory-check.json"
+    },
+    {
+      "file": "sequential-schedule-verification.json",
+      "sha256": "8ba3c3c5d2f53db66be653d8f65a6138a8fb0c194252313f44748bc1a0e4b118",
+      "sourceFile": "lifecycle-37029048758/sequential-schedule-verification.json"
+    },
+    {
+      "file": "b40000-targeted-observations.json",
+      "sha256": "40856a04a40b03cca69659feb3e5daf66eadef58c43534f968a6c4f7dc1555ca",
+      "sourceFile": "lifecycle-37121458129/campaign-results.json"
+    },
+    {
+      "file": "campaign-completion-audit.json",
+      "sha256": "0f1b3b16d09599053b08d9e5ef63469dc948249c874ff7069757f514412501a5",
+      "sourceFile": "lifecycle-37029048758/campaign-completion-audit.json"
     }
   ],
   "rawArchiveLocation": "~/Projects/parity/coinage-test-evidence/lifecycle-37029048758",
   "scope": "Selected summaries, verification outputs and hashes are committed. Raw archives and block/state evidence are retained locally; hashes alone do not reproduce an audit.",
   "additionalRawArchiveLocations": [
-    "~/Projects/parity/coinage-test-evidence/lifecycle-37116007842"
+    "~/Projects/parity/coinage-test-evidence/lifecycle-37116007842",
+    "~/Projects/parity/coinage-test-evidence/lifecycle-37121458129"
   ]
 }
