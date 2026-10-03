@@ -1,5 +1,5 @@
 {
-  "recordedAt": "2026-10-03T11:47:23.949319+00:00",
+  "recordedAt": "2026-10-03T12:03:56.692611+00:00",
   "run": "https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758",
   "artifacts": [
     {
@@ -243,6 +243,17 @@
       "expiresAt": "2026-11-02T11:13:25Z",
       "sizeBytes": 367271624,
       "artifactUrl": "https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/artifacts/11272711030"
+    },
+    {
+      "artifact": "coinage-split-20000-burst-enlarged-pilot-37116007842-1",
+      "id": 11273650139,
+      "run": "https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37116007842",
+      "commit": "ba4bdee5c1a4a7ed725e6a1f34653b7bb39b774c",
+      "zipSha256": "3982f62f7724abd8442fd141975d546d91dd28a061b48ba360cee85bd7364786",
+      "downloadedAt": "2026-10-03T11:50:05.652658+00:00",
+      "expiresAt": "2026-11-02T11:49:27Z",
+      "sizeBytes": 66928042,
+      "artifactUrl": "https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37116007842/artifacts/11273650139"
     }
   ],
   "selectedFileChecksums": [
@@ -358,11 +369,6 @@
       "sourceFile": "lifecycle-37116007842/b100-verification.txt"
     },
     {
-      "file": "targeted-observations.json",
-      "sha256": "10474dc53754e6e7eaf40249d9bf1332ae482874a7b39916350acbf6976d2838",
-      "sourceFile": "lifecycle-37116007842/campaign-results.json"
-    },
-    {
       "file": "b100000-state-observation.json",
       "sha256": "6c0a829eaf6729e053e3c70ccf4b74a00f8d7505881e8dbf4c69eb36d22a27cc",
       "sourceFile": "b100000-state-observation.json"
@@ -391,6 +397,31 @@
       "file": "b100000-resource-observations.json",
       "sha256": "7938d252304209a89e2e42399dcf914a83cc9c655cacdf1ceda59ed802d45e29",
       "sourceFile": "b100000-resource-observations.json"
+    },
+    {
+      "file": "a20000-targeted-split-verification.json",
+      "sha256": "45957876eeb97d91312d39a9c1d5d6066502fb8d3bf8325739da6698177645a2",
+      "sourceFile": "lifecycle-37116007842/a20000-split-verification.json"
+    },
+    {
+      "file": "a20000-targeted-claim-verification.json",
+      "sha256": "ba8e579d7ced429fdb67f9e4442f6c396e3cfd22a834ea2070c27d1f57982823",
+      "sourceFile": "lifecycle-37116007842/a20000-claim-verification.json"
+    },
+    {
+      "file": "a20000-targeted-workload-verification.json",
+      "sha256": "cfa2cfb9acb304ef5fac886f6e61f4007bb6fa20e6210dff93798db682120498",
+      "sourceFile": "lifecycle-37116007842/a20000-workload-verification.json"
+    },
+    {
+      "file": "duplicate-attempt-3-cancellation.json",
+      "sha256": "4cff1dff99ef278fd761727cd64e4a1d5fb1e5368ffbff66121dd26701f8bb42",
+      "sourceFile": "lifecycle-37029048758/duplicate-attempt-3-cancellation.json"
+    },
+    {
+      "file": "targeted-observations.json",
+      "sha256": "b88ab6c3c2fdae1d8c3eeb86766375e0da9e1d24b4deb0956b90f6a16a548bd4",
+      "sourceFile": "lifecycle-37116007842/campaign-results.json"
     }
   ],
   "rawArchiveLocation": "~/Projects/parity/coinage-test-evidence/lifecycle-37029048758",

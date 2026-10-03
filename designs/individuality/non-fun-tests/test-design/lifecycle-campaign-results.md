@@ -1,6 +1,6 @@
 # PreviewNet lifecycle campaign results (in progress)
 
-Evidence checked on 2026-10-03 UTC. [Campaign run](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758); test commit [`ed563b1`](https://github.com/paritytech/polkadot-pop-e2e/commit/ed563b14f5bc99c82c0158cd6ece6f9affff3f46). Original attempts and attempt 2 are separate observations.
+Evidence checked on 2026-10-03 UTC. [Campaign attempt 2](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/attempts/2); test commit [`ed563b1`](https://github.com/paritytech/polkadot-pop-e2e/commit/ed563b14f5bc99c82c0158cd6ece6f9affff3f46). Original attempts and attempt 2 are separate observations.
 
 A is [split and claim](scenarios/payment-burst.md): two calls per actor, in separate waves. B is [recycling](scenarios/synchronised-recycling.md): one coin load per actor, followed by observed ring readiness. No campaign workloads run concurrently.
 
@@ -20,7 +20,7 @@ Passes below require saved raw extrinsics, canonical block/index matches, succes
 | A10,000 | 11,000 | Download failed before submission | Recovered: 10,000 splits + 10,000 claims | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111104686208) |
 | B8,000 + 2,000 | Default | Pass: 10,000 loads and ready members | Passed again | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111108401107) |
 | B10,000 | 11,000 | Pass: 10,000 loads and ready members | Passed again | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111112313624) |
-| A20,000 | 22,000 | Runner lost during driver step | 20,000 splits verified; timing gate withheld claims; fixed rerun queued | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111115755886) |
+| A20,000 | 22,000 | Runner lost during driver step | Corrected rerun: 20,000 splits + 20,000 claims verified; split launch missed target | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37116007842/job/111193589926) |
 | A40,000 | 44,000 | Runner lost during driver step | 40,000 splits + 40,000 claims verified; CI shutdown timeout | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111118958519) |
 | A100,000 | 110,000 | Download failed before submission | Recovered: 100,000 splits + 100,000 claims; CI pass | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111148834636) |
 | B20,000 | 22,000 | Pass: 20,000 loads and ready members | Passed again | [Evidence](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111156205276) |
@@ -31,7 +31,7 @@ B10,000 attempt 2 has **8,724 verified receipts after reconciliation**, leaving 
 
 At its last saved readiness observation, B10,000 had 5,002 observed-ready members and 4,998 unobserved. The cutoff was 247.079 s after first submission, at `0x287b5d1475abd3cca4cbc6cb7bf1be2ae36b4ba45ab02111ac595496d854499c`. The receipt audit stopped further observation. Unobserved readiness is not a proven readiness failure.
 
-A20,000 verified all splits, but its 1,005.179 ms launch exceeded the 1,000 ms target. The old timing gate withheld claims. The correction allows claims after valid receipts and state while retaining the timing failure. A40,000 completed both waves and state checks; its process then stayed alive until the 180-minute timeout. Recovery was measured after that timeout, not immediately after the workload.
+A20,000 attempt 2 verified all splits, but its 1,005.179 ms launch exceeded the 1,000 ms target. The old timing gate withheld claims. The correction allows claims after valid receipts and state while retaining the timing failure. A40,000 completed both waves and state checks; its process then stayed alive until the 180-minute timeout. Recovery was measured after that timeout, not immediately after the workload.
 
 B40,000 lost runner communication in both attempts. Attempt 2 has no final artifact and its log endpoint returns HTTP 404. Submitted, receipt-verified and readiness counts are unknown. The available evidence does not establish the cause of the runner loss.
 
@@ -49,8 +49,12 @@ B100 recovered after two setup failures. The [offline check](evidence/lifecycle-
 | --- | --- | --- | --- | --- | --- |
 | B100 finality | 100 receipts | 0.006 | 35.676 | 35.677 | 35.677 |
 | B100 readiness | 100 ready members | — | 50.339 | 50.341 | 50.341 |
+| A20,000 split finality | 20,000 receipts | 1.100 | 57.641 | 81.841 | 86.024 |
+| A20,000 claim finality | 20,000 receipts | 0.949 | 49.999 | 73.645 | 73.964 |
 
-Its stage took 55.343 s, with a readiness cutoff at 50.341 s. Definitions and exclusions are the same as below. A20,000 is running next; it has no verified result yet.
+B100 took 55.343 s, with a readiness cutoff at 50.341 s. Definitions and exclusions are the same as below.
+
+A20,000 now has [40,000 verified receipts and expected state](evidence/lifecycle-2026-10-03/a20000-targeted-workload-verification.json): 20,000 splits followed by 20,000 claims. Backing stayed at 80,001 units; recovery passed in 64.846 s. CI remains failed because the split launch took 1,099.643 ms against a 1,000 ms target. The corrected driver completed valid claims despite that timing miss. Stage duration was 225.207 s.
 
 ## Timings from attempt 2
 
@@ -109,15 +113,16 @@ Attempt 2 backing stayed at 400,001 units for A100,000 and 40,001 units for B20,
 
 ## Resource observations
 
-These are sampled peaks. Driver RSS includes fixture preparation and smoke. The runner cgroup includes the network and other processes, rather than one node. Pool maintenance deltas cover the whole driver step. A40,000 includes its long shutdown wait, so that window differs substantially.
+Rows use campaign attempt 2 unless marked as the corrected rerun. These are sampled peaks. Driver RSS includes fixture preparation and smoke. The runner cgroup includes the network and other processes, rather than one node. Pool maintenance deltas cover the whole driver step. A40,000 includes its long shutdown wait, so that window differs substantially.
 
-| Attempt 2 case | Driver sampled peak RSS (GiB) | Runner cgroup sampled peak (GiB) | Primary pool watched + unwatched peak | Primary pool maintenance sum / count |
+| Case | Driver sampled peak RSS (GiB) | Runner cgroup sampled peak (GiB) | Primary pool watched + unwatched peak | Primary pool maintenance sum / count |
 | --- | --- | --- | --- | --- |
 | A20,000 | 1.304 | 17.358 | 20,000 | 7.287 s / 221 |
 | A40,000 | 2.033 | 30.416 | 40,000 | 33.862 s / 3582 |
 | A100,000 | 1.992 | 30.870 | 100,000 | 97.714 s / 731 |
 | B20,000 | 1.558 | 19.287 | 20,000 | 62.044 s / 424 |
 | B100,000 enlarged | 4.390 | 31.964 | 100007 | 400.920 s / 1014 |
+| A20,000 corrected rerun | 1.290 | 19.588 | 20,000 | 10.011 s / 255 |
 
 These observations do not measure runtime weight accuracy, block execution wall time or PVF deadline compliance. The watched-plus-unwatched gauge is not the configured ready-pool capacity. Resource observations from successful jobs do not diagnose missing-runner failures.
 
@@ -131,6 +136,8 @@ Each successful case artifact contains its fixture, per-wave `*-audit.json`, `*-
 
 ## Pending work
 
-[Targeted rerun](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37116007842) is running on `ba4bdee5c1a4a7ed725e6a1f34653b7bb39b774c`. B100 has passed; A20,000 is now running. It shares the campaign concurrency group and started after B100,000 finished. It includes download retries, preflight preservation, the corrected timing gate and a bounded shutdown diagnostic. These are mitigations; they do not establish why a runner disappeared.
+[B40,000 bounded retry](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37121458129) is running alone on `ba4bdee5c1a4a7ed725e6a1f34653b7bb39b774c`, with the same 44,000-entry pool. The two earlier runner losses left no saved transaction outcomes; this retry is needed to establish that workload. No success is inferred from its job status.
 
-B100,000 evidence is preserved and its receipt and readiness subsets are verified. Its missing receipts and unobserved readiness remain unresolved. B40,000 remains an attempt with unavailable outcome counts. No production capacity ceiling is claimed.
+The runner scheduler started another automatic retry of the old campaign. It was [cancelled during client validation](evidence/lifecycle-2026-10-03/duplicate-attempt-3-cancellation.json), before network preparation or a new workload. Original attempts 1 and 2 remain separate evidence.
+
+B100,000 evidence is preserved and its receipt and readiness subsets are verified. Its missing receipts and unobserved readiness remain unresolved. No production capacity ceiling is claimed.
