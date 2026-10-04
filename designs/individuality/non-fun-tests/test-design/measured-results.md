@@ -4,6 +4,19 @@ We verified a burst of **100,000 claims**. These experiments establish completed
 
 Pacing and larger pool settings both produced successful 10,000-top-up runs. Later reconciliation verified all 88 dropped-watch transactions from the two incomplete runs. Those runs remain failed as 10,000-top-up experiments: one had 989 admission rejections, and the other never submitted its final 1,500 transactions.
 
+## Consolidated stress metrics — 5 October 2026
+
+The [detailed stress-metrics report](coinage-stress-metrics.md) brings together the saved top-up, claim, split-and-claim and recycling measurements, with timing populations, pool settings, resource samples and [downloadable extracted data](evidence/stress-metrics-2026-10-05/metrics.json).
+
+| Flow | Verified finding | Qualification |
+| --- | --- | --- |
+| Top-up | Pacing and enlarged pools each completed 10,000 | Reconciled receipts retain their original latency populations. |
+| Claim | 150,000 receipts and saved states independently checked | One transfer per root-seeded coin; not a full wallet flow. |
+| Split-and-claim | 100,000 actors; 200,000 receipts | Two operation waves, experimental 110,000-entry pool. |
+| Recycling | 40,000 receipts and ready members | Workload passed; CI shutdown failed. The 100,000 case remains incomplete. |
+
+The lifecycle campaign records 12 workload passes, one launch-timing failure and three incomplete workloads. Two passes had CI shutdown failures. These finite bursts do not establish a production throughput ceiling. Historical observations below retain their original verification context; the detailed report includes the later independent 150,000-claim verification.
+
 ## Measured results
 
 These results apply to distinct actor keys performing one operation each on a disposable PreviewNet network. They do not measure a sustained real-user population. “Verified receipts” below means successful finalized receipts, including later reconciliation. Latency percentiles retain their original observation populations, shown where they differ.
