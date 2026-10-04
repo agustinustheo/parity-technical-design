@@ -196,6 +196,8 @@ These are candidates, not complete scenarios. Each has its own draft file in [`t
 | Offboarding | [Offboarding burst](test-design/scenarios/offboarding-burst.md) | Many actors offboard to the external asset at the same time | C2.offboard, R1.calls, R2.origins, N1.pool | Value delivered to external accounts; partial offboards; unload throughput |
 | All | [Full-flow ramp](test-design/scenarios/full-flow-ramp.md) | A population runs every flow and the load is ramped | All artifacts | The first artifact to violate its response measure, how it fails and whether it recovers |
 
+The next chain pilots are [split and claim](test-design/scenarios/payment-burst.md#next-pilot-split-and-claim) and [coin recycling into built rings](test-design/scenarios/synchronised-recycling.md#next-pilot-coin-loads-into-one-recycler-collection). Each case starts with a smoke test. The sequential campaign runs both flows at 100, 1,000 and 10,000 actors, then 20,000, 40,000 and 100,000 with larger pools. Failures remain results; the next independent case still runs. See each scenario for fallback runs and evidence requirements.
+
 ## Means [TODO]
 
 Execution environments and test levels must be assigned after the scenario artifacts and dependencies are verified.
