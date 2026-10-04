@@ -218,6 +218,87 @@ At **2026-10-01 17:37 UTC** (2 October locally), GitHub reported **in progress**
 
 The validation evidence and checksum manifest are preserved locally under `coinage-evidence/claims-retention-2026-10-02/`; they are not public downloads. The recorded independent validation timestamp is **2026-10-01 17:18:52 UTC** (2 October locally). Original observations remain separate from later verification. See the existing [claim scenario][claim-spec] and [claim methodology][claim-capacity-guide] for workload and measurement boundaries.
 
+## Completed lifecycle campaign — 3 October 2026
+
+**The split-and-claim pilot completed 100,000 fixed-plan actors across two waves, with 200,000 verified successful transaction receipts, using the experimental 110,000-entry pool configuration.** Across the campaign, all **16** requested configurations reached real submissions: **12 workload passes, one launch-timing failure and three incomplete workloads**. Two workload passes have separate CI shutdown failures; the campaign and its CI jobs did not all pass.
+
+- **Scenario A — [split and claim](scenarios/payment-burst.md#next-pilot-split-and-claim):** each actor splits a predefined coin into payment and change, then claims the payment output into a recipient account. A complete case has N splits followed by N claims: **two transactions per actor**.
+- **Scenario B — [recycling](scenarios/synchronised-recycling.md#next-pilot-coin-loads-into-one-recycler-collection):** each actor loads one existing coin into a recycler. Ring-root coverage is observed separately: **one transaction per actor, plus readiness observation**.
+
+These fixed-plan chain tests do not exercise a production wallet planner, chat delivery, TrUAPI or the full mobile-app payment experience. Fixtures seed sufficient-instance coins and backing before measurement, bypassing issuance and wrapped-asset hold setup. These operations do not perform external-asset top-up debits.
+
+### Lifecycle outcome matrix
+
+Pool entries below apply to each People collator. **Recovered** means a later run succeeded after an earlier setup or runner failure; the earlier attempt remains failed. Per-case links identify the relevant job. The [full report's original-attempt column](lifecycle-campaign-results.md#outcomes) preserves the earlier outcomes separately.
+
+| Scenario / job | Actors / scheduling | Pool entries | Final outcome |
+| --- | --- | --- | --- |
+| [Split + claim](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/110910965456) | 100 burst | Default | Pass: 100 splits + 100 claims |
+| [Split + claim](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111088217155) | 1,000 burst | Default | Recovered pass: 1,000 splits + 1,000 claims |
+| [Split + claim](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111091066111) | 10,000 burst | Default | Incomplete: 8,192 split receipts; claims withheld |
+| [Recycling](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37116007842/job/111191304293) | 100 burst | Default | Recovered pass: 100 receipts and ready members |
+| [Recycling](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111094675197) | 1,000 burst | Default | Pass: 1,000 receipts and ready members |
+| [Recycling](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111097683539) | 10,000 burst | Default | Incomplete: 8,724 verified receipts; 5,002 observed ready |
+| [Split + claim](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111101176047) | 8,000 + 2,000 paced | Default | Pass: 10,000 splits + 10,000 claims |
+| [Split + claim](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111104686208) | 10,000 burst | 11,000 | Recovered pass: 20,000 total receipts |
+| [Recycling](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111108401107) | 8,000 + 2,000 paced | Default | Pass: 10,000 receipts and ready members |
+| [Recycling](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111112313624) | 10,000 burst | 11,000 | Pass: 10,000 receipts and ready members |
+| [Split + claim](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37116007842/job/111193589926) | 20,000 burst | 22,000 | All 40,000 receipts and state checks verified; launch-timing failure |
+| [Split + claim](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111118958519) | 40,000 burst | 44,000 | All 80,000 receipts verified; workload passed, CI shutdown timeout |
+| [Split + claim](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111148834636) | 100,000 burst | 110,000 | All 200,000 receipts verified; workload and CI passed |
+| [Recycling](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111156205276) | 20,000 burst | 22,000 | Pass: 20,000 receipts and ready members |
+| [Recycling](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37121458129/job/111198244482) | 40,000 burst | 44,000 | All 40,000 receipts and ready members verified; workload passed, CI shutdown failure |
+| [Recycling](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/job/111181352051) | 100,000 burst | 110,000 | Incomplete: 60,990 receipts verified; 39,917 observed ready |
+
+### Incomplete workloads, timing and shutdown
+
+- **Default recycling, 10,000:** 8,479 original watched receipts plus **245 reconciled = 8,724 verified**; **1,276** have no verified receipt. Readiness was observed for **5,002** members; **4,998** remained unobserved at **247.079 s**. Finality percentiles retain the original **8,479** population; reconciliation supplies no new latency samples.
+- **Split and claim, 20,000 / 22,000-entry pool:** the corrected rerun verified **20,000 splits + 20,000 claims** and expected state. Split launch took **1,099.643 ms** against a **1,000 ms** target: a generator-limited timing failure, not failed transaction execution. The correction let claims proceed after valid split receipts/state while retaining the failed timing criterion. The earlier attempt-2 timing gate had withheld claims; it remains a separate observation.
+- **Recycling, 40,000 / 44,000-entry pool:** all **40,000 receipts, expected states and ready members** were independently checked in the final audit, with no unresolved receipts or readiness. Backing stayed at **80,001** units. The workload passed; CI failed because a TCP socket remained after the two-minute shutdown deadline. Socket ownership and root cause are unestablished. Recovery passed in **64.917 s**, after the shutdown guard. Split-and-claim at 40,000 also passed its workload but hung until the CI timeout; recovery was checked afterward.
+- **Recycling, 100,000 / 110,000-entry pool:** all **100,000** calls were submitted. **60,982** original watched receipts plus **eight reconciled = 60,990 verified**; **39,010** lack verified receipts. Readiness was observed for **39,917** members; **60,083** remained unobserved at **1,797.949 s**. State showed **61,851 member entries**, including **861 state-only outcomes without receipts**; this is not a receipt count. Saved block evidence omits **173363, 173365 and 173366**. Finality uses the original **60,982** population. Completed stage duration is **unavailable**; the per-wave settlement window is not a substitute. Recovery passed and backing stayed unchanged.
+
+Missing receipts do not prove that transactions never executed. Unobserved readiness does not prove that members never became ready. State changes alone do not establish successful transaction receipts.
+
+### Selected lifecycle timings and resources
+
+All timing values are **seconds**. Rows use main campaign attempt 2 unless marked targeted. Each percentile uses only its stated observed population; no latency is assigned to reconciled receipts or unobserved members.
+
+| Case / measurement | Population | Launch | p50 / p95 / max |
+| --- | ---: | ---: | --- |
+| Split + claim 100,000 / split finality | 100,000 receipts | 4.956 | 207.971 / 371.987 / 389.557 |
+| Split + claim 100,000 / claim finality | 100,000 receipts | 4.365 | 172.573 / 318.680 / 332.599 |
+| Recycling 10,000 default / finality | 8,479 watched receipts | 0.383 | 133.680 / 217.971 / 229.942 |
+| Recycling 10,000 default / readiness | 5,002 observed members | — | 150.951 / 226.736 / 231.871 |
+| Recycling 40,000 targeted / finality | 40,000 receipts | 1.428 | 606.384 / 1095.313 / 1143.690 |
+| Recycling 40,000 targeted / readiness | 40,000 observed members | — | 910.867 / 1485.140 / 1558.509 |
+| Recycling 100,000 / finality | 60,982 watched receipts | 3.692 | 925.565 / 1709.561 / 1794.058 |
+| Recycling 100,000 / readiness | 39,917 observed members | — | 992.583 / 1718.515 / 1797.529 |
+
+| Case | Stage duration (s) | Readiness cutoff (s) | Driver sampled peak RSS (GiB) | Runner cgroup sampled peak (GiB) |
+| --- | ---: | --- | ---: | ---: |
+| Split + claim 100,000 | 1041.877 | Not applicable | 1.992 | 30.870 |
+| Recycling 40,000 targeted | 1563.826 | 1558.766 | 2.431 | 25.027 |
+| Recycling 100,000 | Unavailable | 1797.949 | 4.390 | 31.964 |
+
+“Burst” describes a submission window, not simultaneous execution in one block. Finality measures client submission to observation of a successful finalized receipt, including client/RPC overhead. Readiness measures submission to the first finalized poll showing root coverage; it includes polling delay and is **not wallet privacy readiness**. Stage duration includes workload audits, applicable inter-wave signing and readiness observation; it excludes network setup, fixture preparation, the one-actor smoke and post-workload recovery. Recovery duration measures the check, not automatically queue-drain time.
+
+Resource values are sampled peaks. Driver RSS can include fixture preparation and smoke; runner cgroup memory includes multiple processes. [Full timing/resource tables](lifecycle-campaign-results.md#resource-observations) retain the observation windows. Pool-maintenance counters cover those windows and are not direct runtime execution timings. Different pool settings and measurement windows prevent a simple causal comparison.
+
+### Lifecycle configuration and evidence
+
+Evidence was audited on **2026-10-03 UTC**, as recorded in the [final report](lifecycle-campaign-results.md) ([pinned audited revision](https://github.com/paritytech/technical-design/blob/e26a47902fa1cbc1a9dd5dca80d1dc5a2657a508/designs/individuality/non-fun-tests/test-design/lifecycle-campaign-results.md)). This page summarizes that audit; publishing it did not rerun the workloads or independently repeat the full raw-data audit.
+
+- **Main campaign:** [attempt 2](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/attempts/2), test commit [`ed563b14f5bc`](https://github.com/paritytech/polkadot-pop-e2e/commit/ed563b14f5bc99c82c0158cd6ece6f9affff3f46). The generic run page may show cancelled attempt 3, which stopped before network preparation or workload submission; it does not replace attempt-2 findings.
+- **Targeted reruns:** [recycling-100 and split-and-claim-20,000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37116007842), and [recycling-40,000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37121458129), test commit [`ba4bdee5c1a4`](https://github.com/paritytech/polkadot-pop-e2e/commit/ba4bdee5c1a4a7ed725e6a1f34653b7bb39b774c).
+- **Environment:** PreviewNet engine `7907a3bfa7b2e47535a74b7920086a05ca94773a`, snapshot bundle run **36614342201**; six relay validators, two People collators and the snapshot's other parachains on one runner; zero synthetic delay. Both People collators used the stated enlarged entry limits and **262,144 KiB** byte budget. Default cases applied no pool override. No individual transaction retries.
+- **Scheduling:** the [configuration check](evidence/lifecycle-2026-10-03/saved-configuration-verification.json) and [schedule check](evidence/lifecycle-2026-10-03/sequential-schedule-verification.json) record sequential scheduling and no overlap among **27** saved driver executions. Lost-runner records cannot establish orphaned-process lifetime.
+
+Download the committed [completion audit](evidence/lifecycle-2026-10-03/campaign-completion-audit.json), [case inventory](evidence/lifecycle-2026-10-03/case-inventory-check.json), [observation snapshot](evidence/lifecycle-2026-10-03/observations.json) and [evidence manifest](evidence/lifecycle-2026-10-03/manifest.json). Detailed checks cover [corrected split-and-claim-20,000](evidence/lifecycle-2026-10-03/a20000-targeted-workload-verification.json), [recycling-40,000 receipts/state](evidence/lifecycle-2026-10-03/b40000-targeted-verification.txt), [its readiness](evidence/lifecycle-2026-10-03/b40000-targeted-readiness-verification.json), [shutdown diagnostic](evidence/lifecycle-2026-10-03/b40000-targeted-shutdown-error.json), and recycling-100,000 [receipts](evidence/lifecycle-2026-10-03/b100000-receipts-reconciliation.json), [readiness](evidence/lifecycle-2026-10-03/b100000-readiness-verification.json), [state](evidence/lifecycle-2026-10-03/b100000-state-observation.json) and [block coverage](evidence/lifecycle-2026-10-03/b100000-block-coverage.json).
+
+The final audit records **24 raw archives preserved locally with hashes checked**; the final recycling-40,000 archive also matched GitHub's published digest. The manifest supplies artifact IDs, SHA-256 hashes, expiry dates and additional GitHub download links. GitHub artifacts have **30-day retention**. The committed summaries are served with this site; the raw archives are only retained locally and are not public website downloads. Summaries and hashes alone cannot reproduce the full receipt audit.
+
+Saved local RPC observations are not independent cryptographic consensus proofs. The campaign establishes neither a production capacity ceiling nor unlimited scalability, measured runtime-weight accuracy, block execution wall time or PVF deadline compliance.
+
 ## How verification works
 
 Each verified receipt matches a transaction hash to raw extrinsic bytes, its block and index, `System.ExtrinsicSuccess`, and the expected Coinage event. The reconciled top-up receipts also match the event’s actor, instance, denomination and amount to the fixture. Both local People nodes report the block as canonical and finalized. Separate state checks verify actor debits, held backing and voucher inclusion in built roots for top-ups, or source and recipient coin state for claims. These are trusted local-node observations, not independent cryptographic consensus proofs.
