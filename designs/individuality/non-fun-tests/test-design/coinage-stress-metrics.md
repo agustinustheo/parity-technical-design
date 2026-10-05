@@ -1,12 +1,10 @@
 # Coinage stress metrics
 
-[Measured-results summary](measured-results.md) · [Measurement appendix](coinage-stress-metrics-appendix.md) · [Lifecycle audit report](lifecycle-campaign-results.md) · [Download extracted data](evidence/stress-metrics-2026-10-05/metrics.json) · [SHA-256 checksum](evidence/stress-metrics-2026-10-05/SHA256SUMS.txt)
-
 *How far we pushed four Coinage flows on a local PreviewNet, and what the numbers can and can't tell us.*
 
 Stress testing a chain is not like stress testing a web server. A transaction doesn't just get a response. It waits in a pool, lands in a block, gets finalized, and only then do we know whether it worked. So when I say a workload **passed**, I mean, at minimum, that we found and checked a receipt for every transaction and the final coin state matched. Some cases also had extra criteria, like a launch-time target.
 
-We ran top-ups, claims, splits and recycling from 100 actors all the way up to 150,000, and we even tried a million. Some runs passed, some didn't, and a few ended somewhere in between. Here's what we found.
+We ran top-ups, claims, splits and recycling from 100 actors all the way up to 150,000, and we even tried a million. Some runs passed, some didn't, and a few ended somewhere in between. Here's what we found. If you want the exact numbers behind each chart, they're in the [measurement appendix](coinage-stress-metrics-appendix.md), and you can [download the extracted data](evidence/stress-metrics-2026-10-05/metrics.json) to check them yourself.
 
 ## The short version
 
@@ -42,6 +40,19 @@ Before we get to any numbers, here are the words I'll keep using:
 - **Reconciliation:** a later check of saved evidence that found receipts for transactions whose watch ended early. It adds verified receipts, but not timing samples.
 
 The full timing boundaries are in [Measurement definitions](#measurement-definitions) if you want the fine print.
+
+## Why do these metrics matter?
+
+You might be wondering why we measure all of this instead of just counting how many transactions the node accepted. Let me explain. Acceptance only tells us a transaction got through the door. Coinage moves money, so what matters is whether it moved, how long people waited, and what broke first when we pushed harder. Each metric answers one of those questions:
+
+- **Verified receipts and final coin state** tell us whether the money actually moved. A node can accept a transaction that later drops out of the pool or fails at dispatch. A payment that silently disappears is the worst outcome for a wallet, so a receipt plus a matching coin state is the only thing I count as success.
+- **Finality** is how long someone waits before a payment is settled and the recipient can rely on it. I report **p95** instead of an average because the people stuck at the back of a spike are the ones who notice. An average hides them.
+- **Readiness** matters for top-ups and recycling. A loaded voucher can't be unloaded into a coin until its key is inside a built ring root, because unloading needs a membership proof against that root. Finality tells us the load landed; readiness tells us when the user can actually use it.
+- **Pool rejections and the ready queue** show what a spike looks like at the door. A rejected submission fails straight away; a queued one waits. They tell us whether a bigger pool or pacing helps, and how long the backlog took to clear.
+- **Claims per block** shows the limit that matters once claims are waiting. No matter how many sit in the pool, a block only holds so many before it hits its weight limit, and that sets how fast any backlog drains.
+- **Launch timing and driver memory** tell us whether we measured the chain or our own tooling. A late launch or an exhausted heap is a load generator problem, and I don't want to blame it on the chain.
+
+> Acceptance tells us a transaction got in the door. **A verified receipt tells us the money moved.**
 
 * * *
 

@@ -1,8 +1,6 @@
 # Appendix: Coinage measured results
 
-[Read the report](coinage-stress-metrics.md) · [Results overview](measured-results.md) · [Extracted data](evidence/stress-metrics-2026-10-05/metrics.json)
-
-The tables below preserve the detailed measurements and evidence references from the report. All timings are seconds; N is the timing sample count. An em dash means the record does not establish that measurement. See the report’s [measurement definitions](coinage-stress-metrics.md#measurement-definitions) and [environment](coinage-stress-metrics.md#environment-and-pool-configuration) before comparing configurations.
+The tables below preserve the detailed measurements and evidence references behind the [Coinage stress metrics report](coinage-stress-metrics.md). If you'd rather work with the numbers directly, you can [download the extracted data](evidence/stress-metrics-2026-10-05/metrics.json). All timings are seconds; N is the timing sample count. An em dash means the record does not establish that measurement. See the report’s [measurement definitions](coinage-stress-metrics.md#measurement-definitions) and [environment](coinage-stress-metrics.md#environment-and-pool-configuration) before comparing configurations.
 
 Finality ends at successful finalized receipt lookup. Readiness ends at the first saved finalized observation of root coverage. Reconciled counts do not create new timing samples. Stage duration excludes fixtures, smoke and recovery; workflow-specific boundaries remain in the report.
 
