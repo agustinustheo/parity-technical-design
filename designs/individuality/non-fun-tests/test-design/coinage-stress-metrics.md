@@ -24,11 +24,11 @@ The 20,000–100,000 claim series used the same engine and snapshot, `polkadot-w
 
 ## Top-up
 
-[Scenario](scenarios/top-up-burst.md). All rows below retain the original run references and later reconciliation separately. The earlier successful runs are recorded in the existing report; their p95 values are retained at the published precision.
+[Scenario](scenarios/top-up-burst.md). The appendix rows retain the original run references and later reconciliation separately. The earlier successful runs are recorded in the existing report; their p95 values are retained at the published precision.
 
 [View the top-up measurements table in the appendix](coinage-stress-metrics-appendix.md#top-up-measurements).
 
-The 7,000 + 3,000 run launched each wave in 0.282 and 0.103 s; the second began about 196 s after the first and waited for verified receipts. The enlarged-pool burst launched in 0.380 s. All three successful rows above verified debits, ready vouchers and matching backing. See the existing [top-up results](measured-results.md#measured-results) for audit and recovery records.
+The 7,000 + 3,000 run launched each wave in 0.282 and 0.103 s; the second began about 196 s after the first and waited for verified receipts. The enlarged-pool burst launched in 0.380 s. The three earlier successful runs verified debits, ready vouchers and matching backing. See the existing [top-up results](measured-results.md#measured-results) for audit and recovery records.
 
 The default simultaneous run has **8,971 original + 40 reconciled = 9,011 receipts**, plus 989 admission rejections. The paced 8,500 case has **8,452 + 48 = 8,500 receipts**; its second wave was withheld. Its original readiness sample covered **5,602**, while later saved state establishes **5,869**. The extra 267 have no new timing samples. The 8,400 + 1,600 case verified all 10,000 receipts and ready members. All three reconciliation cases passed recovery; debited actors and held/wrapped backing were respectively 9,011 / 18,022, 8,500 / 17,000 and 10,000 / 20,000 test-asset units. Reconciliation was verified 30 September 2026 UTC.
 
