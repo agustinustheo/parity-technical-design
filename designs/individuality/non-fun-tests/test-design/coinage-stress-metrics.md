@@ -1,205 +1,215 @@
 # Coinage stress metrics
 
-[Measured-results summary](measured-results.md) · [Measurement appendix](coinage-stress-metrics-appendix.md) · [Lifecycle audit report](lifecycle-campaign-results.md) · [Download extracted data](evidence/stress-metrics-2026-10-05/metrics.json) · [SHA-256 checksum](evidence/stress-metrics-2026-10-05/SHA256SUMS.txt)
+*How far we pushed four Coinage flows on a local PreviewNet, and what the numbers tell us.*
 
-*How far we pushed four Coinage flows on a local PreviewNet, and what the numbers can and can't tell us.*
+Stress testing a chain is not like stress testing a web server. A web server sends a response, and you are done. A chain transaction waits in a pool, goes into a block and then becomes final. Only then do we know if it worked.
 
-Stress testing a chain is not like stress testing a web server. A transaction doesn't just get a response. It waits in a pool, lands in a block, gets finalized, and only then do we know whether it worked. So when I say a workload **passed**, I mean, at minimum, that we found and checked a receipt for every transaction and the final coin state matched. Some cases also had extra criteria, like a launch-time target.
+So I use a strict rule. A workload **passed** only when every transaction has a verified receipt and the final coin state is correct. Some cases also had a launch-time target.
 
-We ran top-ups, claims, splits and recycling from 100 actors all the way up to 150,000, and we even tried a million. Some runs passed, some didn't, and a few ended somewhere in between. Here's what we found.
+We ran four flows with 100 to 150,000 actors. We also tried one million. Some runs passed, some failed and some are incomplete. Here's what we found.
+
+The exact numbers are in the [measurement appendix](coinage-stress-metrics-appendix.md). You can also [download the extracted data](evidence/stress-metrics-2026-10-05/metrics.json) and check it yourself.
 
 ## The short version
 
-- **10,000 top-ups and 10,000 claims:** pacing and a larger pool each completed and verified these workloads. A single 10,000 burst on the default pool did not: in both flows, 989 submissions were rejected when they tried to enter the pool.
-- **Claims at scale:** the largest verified burst was **150,000 claims**, with an independent re-check of saved receipts and coin states. In the 20,000–100,000 bursts, every full block held 2,363 claims. A larger pool let more claims wait; it did not put more claims in a block.
-- **Lifecycle campaign:** 16 selected cases produced **12 workload passes, one launch-timing failure and three incomplete workloads**. Two of the passes had separate CI shutdown failures. Split-and-claim at 100,000 actors verified all **200,000 receipts**.
-- **Recycling:** 40,000 actors verified all receipts and readiness; CI shutdown failed afterwards. The 100,000 case is **incomplete**: 60,990 verified receipts and 39,917 members observed ready.
-- **Limits:** the million-claim attempt exhausted the load generator's heap; it does not show a chain limit. These finite bursts do not establish sustainable production TPS, a physical maximum, runtime-weight accuracy or PVF deadline compliance.
+- **10,000 top-ups and 10,000 claims.** One burst of 10,000 on the default pool did not complete. The pool rejected 989 submissions in each flow. Waves and a bigger pool both fixed this.
+- **Claims at scale.** The largest verified burst was **150,000 claims**. A second, independent check found zero errors.
+- **One block holds 2,363 claims.** This was true for every full block. A bigger pool lets more claims wait. It does not put more claims in a block.
+- **Lifecycle campaign.** We selected 16 cases. 12 passed, one failed its launch-time target and three are incomplete. Split-and-claim with 100,000 actors verified all **200,000 receipts**.
+- **Recycling is the slowest flow.** 40,000 actors passed. 100,000 actors is **incomplete**: 60,990 verified receipts and 39,917 coins seen as ready.
+- **One million claims did not run.** The load generator ran out of memory. This is a limit of our tool, not of the chain.
+
+> These are finite bursts. They do not show a sustainable production TPS or a maximum capacity.
 
 * * *
 
-## What did we actually test?
+## What did we test?
 
-Each test sends signed Coinage extrinsics from many prepared test accounts to a local PreviewNet network with two People collators. I'll call those accounts **actors**.
+Each test sends signed Coinage extrinsics from many test accounts. I call these accounts **actors**. The target is a local PreviewNet with two People collators.
 
 | Flow | What one actor does | Extrinsics per actor |
 | --- | --- | ---: |
-| [Top-up](scenarios/top-up-burst.md) | Debits an external test asset and creates a voucher. | 1 |
-| [Claim](scenarios/claim-burst.md) | Transfers one root-seeded source coin. The source is removed and its replacement created, so no net live coin is added. | 1 |
+| [Top-up](scenarios/top-up-burst.md) | Pays with an external test asset and gets a voucher. | 1 |
+| [Claim](scenarios/claim-burst.md) | Transfers one coin. The old coin goes away and a new coin replaces it. | 1 |
 | [Split-and-claim](scenarios/payment-burst.md) | Splits a coin, then claims it. | 2 |
-| [Recycling](scenarios/synchronised-recycling.md) | Loads an existing coin into a recycler. We then watch for ring-root coverage separately. | 1 |
+| [Recycling](scenarios/synchronised-recycling.md) | Loads a coin into a recycler. We then wait for the coin to become ready. | 1 |
 
-Simple, right? Mostly. Let me be upfront though: **these tests do not cover the whole wallet**. They omit the production wallet planner, chat delivery, TrUAPI and the mobile payment experience. Root-seeded claims and lifecycle fixtures also bypass issuance and wrapped-asset hold setup, so unchanged fixture backing does not prove normal held-backing accounting. Fixtures and the separate smoke transactions are excluded from every workload count.
+Let me be clear: **these tests do not cover the whole wallet**. They do not include the production wallet planner, chat delivery, TrUAPI or the mobile payment screens.
 
-Before we get to any numbers, here are the words I'll keep using:
+Some test coins are created directly, not through normal issuance. So these tests do not prove the normal backing accounting. Setup transactions and smoke transactions are not in any count.
 
-- **Default pool:** 8,192 entries / 20 MiB per People collator. **Enlarged pool:** a larger limit set for one run, shown as entries / bytes.
-- **Burst** submits every transaction at once. **Paced** submits in waves, such as 8,000 + 2,000.
-- **Verified receipt:** the raw extrinsic hash is found at its canonical block and index, with `System.ExtrinsicSuccess` and the expected Coinage event.
-- **Finality:** time from client submission to a successful finalized receipt lookup.
-- **Readiness:** time from submission to the first saved finalized observation of ring-root coverage. It includes polling delay. It is not wallet privacy readiness.
-- **p95:** 95% of the stated population completed within this time. **N** is that population.
-- **Reconciliation:** a later check of saved evidence that found receipts for transactions whose watch ended early. It adds verified receipts, but not timing samples.
+### Words I use
 
-The full timing boundaries are in [Measurement definitions](#measurement-definitions) if you want the fine print.
+- **Default pool:** 8,192 entries and 20 MiB for each People collator. A **bigger pool** has a larger limit for one run, for example 11,000 entries.
+- **At once (burst):** we send all transactions together. **In waves (paced):** we send them in groups, for example 8,000 then 2,000.
+- **Verified receipt:** we found the transaction in a finalized block, and it shows success and the correct Coinage event.
+- **Finality:** the time from sending a transaction to finding its successful, finalized receipt.
+- **Readiness:** the time from sending to the first time we see the coin in a finalized ring root. This includes our polling delay.
+- **p95:** 95% of transactions finished in this time or less. **N** is the number of transactions that we timed.
+- **Reconciliation:** a later check of saved evidence. It can find more receipts. It cannot add more timing samples.
+
+The full definitions are in [Measurement definitions](#measurement-definitions).
+
+## Why do these metrics matter?
+
+You might ask, "Why not just count how many transactions the node accepted?" Let me explain.
+
+Acceptance only tells us that a transaction got in the door. Coinage moves money. So I want to know three things: did the money move, how long did people wait, and what broke first?
+
+- **Verified receipts and coin state** tell us if the money moved. A node can accept a transaction and then lose it. For a wallet, a payment that disappears is the worst result.
+- **Finality** tells us how long a person waits for a settled payment. I use p95, not the average. The average hides the people at the back of the queue.
+- **Readiness** matters for top-ups and recycling. You cannot use a new coin until it is in a ring root. Finality says the coin landed. Readiness says you can use it.
+- **Pool rejections and the ready queue** show what happens when a spike arrives. A rejected transaction fails immediately. A queued transaction waits.
+- **Claims per block** shows the real speed limit. A block can only hold a fixed amount of work. This limit sets how fast a queue drains.
+- **Launch time and driver memory** tell us if a problem came from the chain or from our test tool.
+
+> Acceptance tells us a transaction got in the door. **A verified receipt tells us the money moved.**
 
 * * *
 
-## How did each flow hold up?
+## How did each flow do?
 
-### Top-ups: pacing and bigger pools both got us to 10,000
+### Top-ups: waves and bigger pools both got us to 10,000
 
-We started with top-ups. Three earlier runs passed: a 1,000 burst, a paced 7,000 + 3,000, and a 10,000 burst with an enlarged 11,000-entry / 40 MiB pool. Each verified debits, ready vouchers and matching backing. The 7,000 + 3,000 waves launched in 0.282 and 0.103 s. The second wave began about 196 s after the first and waited for verified receipts. The enlarged-pool burst launched in 0.380 s. Their p95 values keep their published precision, and their audit and recovery records are in the existing [top-up results](measured-results.md#measured-results).
+We did six top-up runs. Four passed and two failed.
 
-Then we tried three more runs on the default pool, and later reconciled them on 30 September 2026 UTC:
+- **Passed:** 1,000 at once; 7,000 + 3,000 in waves; 10,000 at once with a bigger pool; and 8,400 + 1,600 in waves on the default pool.
+- **Failed:** 10,000 at once on the default pool. The pool rejected 989 submissions, so only 9,011 have receipts.
+- **Failed:** 8,500 + 1,500 in waves. We held back the second wave, so only 8,500 top-ups have receipts.
 
-- **10,000 burst:** 8,971 original + 40 reconciled = **9,011 receipts**, plus 989 admission rejections.
-- **8,500 + 1,500 paced:** 8,452 + 48 = **8,500 receipts**. The second wave was withheld. The original readiness sample covered **5,602** members; later saved state establishes **5,869**. The extra 267 have no timing samples.
-- **8,400 + 1,600 paced:** all **10,000** receipts and ready members verified.
+Reconciliation on 30 September 2026 found 40 and 48 more receipts in the two failed runs. This does not change the result. They **stay failed**.
 
-To be clear, the first two **remain failed** as 10,000-top-up experiments. Reconciliation found more receipts, but it doesn't turn a failed run into a passing one. All three passed recovery. Debited actors and held/wrapped backing were 9,011 / 18,022, 8,500 / 17,000 and 10,000 / 20,000 test-asset units.
+The three newer runs all recovered after the test, and their backing matched the verified top-ups. The earlier runs' recovery records are in the [top-up results](measured-results.md#measured-results). The [top-up measurements table](coinage-stress-metrics-appendix.md#top-up-measurements) has the full numbers.
 
-The full numbers are in the [top-up measurements table](coinage-stress-metrics-appendix.md#top-up-measurements).
+#### Figure 1: How long did top-ups take?
 
-#### Figure 1: How long did top-ups take to finalize?
+[![Grouped bar chart of top-up finality p95 and readiness p95 for six runs. The four passing runs settle in 53 to 256 seconds and become ready in 106 to 353 seconds. The two failed runs are grey.](evidence/stress-metrics-2026-10-05/topup-timing.svg)](evidence/stress-metrics-2026-10-05/topup-timing.svg)
 
-So how long did it take for 95% of timed top-ups to reach a successful finalized receipt in each run?
+*Figure 1. Each run has two bars. Blue is finality p95: the payment is settled. Orange is readiness p95: the voucher can be used. Grey bars are failed runs, and they show only the transactions that we timed.*
 
-[![Horizontal bar chart of top-up finality p95 in seconds for six runs, from 53.0 s for 1,000 top-ups to between 183.0 and 256.0 s for the 8,500 to 10,000 runs](evidence/stress-metrics-2026-10-05/topup-finality.svg)](evidence/stress-metrics-2026-10-05/topup-finality.svg)
+So what does this chart tell us? For the larger passing runs, 95% of top-ups settled in 183 to 256 seconds. The vouchers became ready about 80 to 100 seconds after that.
 
-*Figure 1. Bars show finality p95 in seconds. Each label gives the schedule, the pool setting and N, the original timed population. The first three bars are earlier results at their published precision.*
-
-The image shows p95 at 53.0 s for 1,000 top-ups and 183.0–256.0 s for the larger runs. Notice the two reconciled runs still use N of 8,971 and 8,452. That's because reconciled receipts add no timing samples. Mind you, each bar is a different configuration, so the bars don't form a capacity curve.
-
-#### Figure 2: When did top-ups and recycled coins become ready?
-
-How long did it take for 95% of observed members to show up in a saved finalized ring root?
-
-[![Two horizontal bar charts of readiness p95 in seconds: three top-up runs between 231.6 and 332.5 s, and eight recycling cases rising from 50.3 s at 100 actors to 1,718.5 s at 100,000 actors](evidence/stress-metrics-2026-10-05/readiness.svg)](evidence/stress-metrics-2026-10-05/readiness.svg)
-
-*Figure 2. Bars show readiness p95 in seconds; N is the number of members observed ready. Upper panel: default-pool top-up runs 36537079387 (10,000 burst), 36619415692 (8,500 + 1,500) and 36662212241 (8,400 + 1,600). Lower panel: recycling cases from the lifecycle campaign, labelled with their pool setting.*
-
-Top-up p95 sat between 231.6 and 332.5 s. Recycling p95 climbed from 50.3 s at 100 actors to 1,718.5 s at 100,000. Two bars need a closer look though. The 8,500 + 1,500 top-up keeps its original 5,602 samples, not the 5,869 later shown by state. The 100,000 recycling bar only covers the 39,917 members observed before the 1,797.9 s cutoff. See the [recycling readiness table](coinage-stress-metrics-appendix.md#recycling-readiness).
+Don't read this chart as a trend. Each run has a different size, schedule and pool. The two failed runs also have fewer timed transactions, so their bars are not the full story.
 
 ### Claims: the lightest flow, and the biggest bursts
 
-Claims are where we pushed the hardest. Let's start with the one that didn't work. The default-pool 10,000 burst verified **8,192** claims. 989 submissions were rejected immediately and 819 watches were dropped. Those source coins were unchanged and their recipients absent at the saved state cutoff. Dropped watches are not failed-dispatch receipts.
+Claims are where we pushed the hardest. Let's start with the run that didn't work.
 
-Every other claim run passed receipt and final coin-state checks, with no retries and successful recovery. Each claim removed its source and created a recipient with the expected instance and value, and age 0 → 1. Fixture balances stayed unchanged at 20,001, 40,001, 80,001, 200,001 and 300,001 raw asset units for the 10,000, 20,000, 40,000, 100,000 and 150,000 workloads.
+The 10,000 burst on the default pool verified only **8,192** claims. The pool rejected 989 submissions immediately, and we lost the watch on 819 more. At the saved cutoff, those 819 coins had not changed.
 
-The **150,000** run got an extra check. We re-verified it independently on **2 October 2026 at 03:05 UTC**: 150,000 receipts and saved states, zero mismatches, backing 300,001 → 300,001 raw asset units. The download includes the verifier output and scope. This updates the earlier CI-only verification record.
+Every other claim run passed. Each claim removed the old coin and created the correct new coin. The fixture backing did not change in any run.
 
-> 150,000 claims, 150,000 verified receipts, **zero state mismatches**.
+We checked the **150,000** run again on **2 October 2026 at 03:05 UTC**, with a separate verifier. It found 150,000 receipts and 150,000 correct coin states, with zero errors.
 
-A few timing details worth knowing:
+> 150,000 claims, 150,000 verified receipts, **zero errors**.
 
-- The paced 10,000 run started its second wave 52.241 s after the first, after the first 8,000 receipts were audited. Its last watch settled at 79.207 s. The enlarged-pool 10,000 burst settled at 55.127 s.
-- For 20,000 / 40,000 / 100,000 claims, preparation took 1,138.347 / 977.091 / 2,440.797 s, and launch targets were 1 / 5 / 10 s.
-- The 150,000 launch target was 60 s. Its last watch receipt arrived at 509.979 s.
-- Client launch rates for 20,000 / 40,000 / 100,000 were 24,931.9 / 25,284.7 / 25,447.2 submissions/s. Each is the submitted count divided by the unrounded launch window. They measure the client, not sustainable chain TPS.
+What about one million? We tried. The load generator used all of its 24 GiB of memory before it finished. So we have no receipts to check. **This is a limit of our tool, not of the chain.** The [fix](https://github.com/paritytech/polkadot-pop-e2e/commit/932677d50e07052e62d45356a334801dc4630270) makes the tool keep less data in memory. We tested the fix with one million fake notifications, not with one million real transactions.
 
-What about a million? We tried. The million-claim attempt exhausted the driver's 24 GiB heap and produced no complete receipt or state audit. **That's a load generator limit, not a chain limit.** The [fix](https://github.com/paritytech/polkadot-pop-e2e/commit/932677d50e07052e62d45356a334801dc4630270) bounds retained notifications and cached data without pacing, retries or weaker verification. Its million-notification synthetic regression is not a million-transaction chain run. The earlier [1,000-claim baseline](measured-results.md#measured-results), [verified memory-fix validation](measured-results.md#verified-1000-claim-validation) and [million-claim generator failure](measured-results.md#claim-generator-memory-retention--2-october-2026) stay as separate records.
+The [claim measurements](coinage-stress-metrics-appendix.md#claim-measurements) table has all launch times and stage times.
 
-The details are in the [claim measurements](coinage-stress-metrics-appendix.md#claim-measurements), [client notifications and receipt lookup](coinage-stress-metrics-appendix.md#client-notifications-and-receipt-lookup) and [claim resources](coinage-stress-metrics-appendix.md#claim-resources) tables. The client notifications table splits each claim's latency into first pool-ready, first inclusion, finalized notification and successful receipt lookup. Inclusion can come well before finality.
+#### Figure 2: How long did the slowest claims wait?
 
-#### Figure 3: How long did the large claim bursts take to finalize?
+[![Range plot of claim finality. At 20,000 claims p50 is 66 s and p95 is 94 s. At 40,000 claims p50 is 92 s and p95 is 139 s. At 100,000 claims p50 is 179 s, p95 is 297 s and p99 is 306 s.](evidence/stress-metrics-2026-10-05/claim-finality.svg)](evidence/stress-metrics-2026-10-05/claim-finality.svg)
 
-How long did claims take to reach a successful finalized receipt in the 20,000, 40,000 and 100,000-claim bursts?
+*Figure 2. Each line goes from p50 (the open circle) to p99 (the diamond). The filled circle is p95. Every run timed all of its claims.*
 
-[![Grouped bar chart of claim finality p50, p95 and p99 in seconds; p95 is 93.8 s at 20,000 claims, 139.4 s at 40,000 and 297.3 s at 100,000](evidence/stress-metrics-2026-10-05/claim-finality.svg)](evidence/stress-metrics-2026-10-05/claim-finality.svg)
+Look at the right end of each line. p95 and p99 are almost on top of each other, never more than 9 seconds apart. So there was no long tail of very slow claims. Claims waited in a queue, and the queue drained at a steady rate.
 
-*Figure 3. Bars show p50, p95 and p99 finality in seconds. N is every successful watch, equal to the burst size. Pool entry limits were 22,000, 44,000 and 110,000, all with 40 MiB.*
+These are three separate setups with different pool limits. Don't draw a line through them.
 
-p95 was 93.8 s at 20,000 claims, 139.4 s at 40,000 and 297.3 s at 100,000. In every run, p99 was within about 9 s of p95. Now, it's tempting to draw a line through these three bars. Don't. The pool limits differ, so these are three separate experiments, not points on one capacity curve.
+#### Figure 3: How full did the queue get?
 
-#### Figure 4: How full did the ready queue get?
+[![Three line charts of claims waiting in each collator's ready queue. Collator 1 peaks at 20,000, 37,637 and 88,185 claims. Both queues are empty at about 75, 116 and 293 seconds.](evidence/stress-metrics-2026-10-05/pool.svg)](evidence/stress-metrics-2026-10-05/pool.svg)
 
-How many claims waited in each People collator's ready queue, and when did the queue empty?
+*Figure 3. One panel for each burst size. The lines show how many claims waited in each People collator's ready queue. The grey line shows when both queues were empty.*
 
-[![Three line charts of ready transactions against seconds from burst start for the 20,000, 40,000 and 100,000-claim bursts; Collator-1502 peaks at 20,000, 37,637 and 88,185 and both collators reach zero by about 75, 116 and 293 s](evidence/stress-metrics-2026-10-05/pool.svg)](evidence/stress-metrics-2026-10-05/pool.svg)
+The queue filled up in the first 10 to 50 seconds. Then it went down at a steady rate until it was empty. That steady rate matches the fixed number of claims in each block (Figure 4).
 
-*Figure 4. One panel per burst. Lines show each node's own ready-queue gauge, `substrate_ready_transactions_number`, for Collator-1502 (solid) and Collator-1502-2 (dashed). Samples are about five seconds apart. This gauge is not the count of watched transactions.*
+We sampled the queue every five seconds, so we can miss short peaks.
 
-Collator-1502 peaked at 20,000, 37,637 and 88,185 ready claims, while Collator-1502-2 peaked at 9,877, 21,402 and 18,821. Both queues first sampled empty at about 75, 116 and 293 s. Keep in mind that five-second samples can miss brief peaks. The pool holds claims while they wait. It doesn't decide how many fit in a block, which is what Figure 5 is about.
+#### Figure 4: How many claims fit in one block?
 
-#### Figure 5: How many claims fit in one block?
+[![Three bar charts of verified claims in each block. Every full block holds 2,363 claims. The last block in each run holds fewer: 1,096, 2,192 and 754.](evidence/stress-metrics-2026-10-05/blocks.svg)](evidence/stress-metrics-2026-10-05/blocks.svg)
 
-How many workload claims did each finalized block contain?
+*Figure 4. Each bar is one finalized block. Blue bars are full blocks. The grey bar is the last block, which held the claims that were left.*
 
-[![Three bar charts of receipt-verified claims per canonical finalized block; every full block holds 2,363 claims, with a smaller final block in each run](evidence/stress-metrics-2026-10-05/blocks.svg)](evidence/stress-metrics-2026-10-05/blocks.svg)
+This is the clearest result in the report. **Every full block held exactly 2,363 claims.** In the 100,000 run, all 42 full blocks stopped because they hit the block weight limit.
 
-*Figure 5. Bars count receipt-verified workload claims in each canonical finalized block; smoke claims are excluded. The horizontal axis is block number, not time. Blocks: 173326–173334 (20,000 claims), 173288–173304 (40,000) and 173541–173583 (100,000).*
-
-This chart has the cleanest pattern in the whole report. Every full block held 2,363 claims: 8 full blocks then 1,096 at 20,000, 16 then 2,192 at 40,000, and 42 then 754 at 100,000, across 43 canonical receipt blocks. In the 100,000 run, all 42 full blocks reported `HitBlockWeightLimit` and the last reported `NoMoreTransactions`. The longest canonical proposal took 2.970 s. Proposal duration is authoring time, not PVF execution time.
+This also explains Figure 3. The pool decides how many claims can wait. The block weight limit decides how fast they leave.
 
 > A bigger pool lets more claims wait. **It doesn't make blocks hold more claims.**
 
-What about the host? Host and pool values are roughly five-second samples. Host CPU is an average across logical CPUs and peaked at 20.7–25.2%. That looks relaxed, but one logical CPU still reached about 98% in the 100,000 run. So a low average does not rule out a serial limit. Driver memory is in [Figure 7](#figure-7-what-reached-each-stage-and-how-much-memory-did-the-driver-use).
+What about the machine? Average CPU use peaked at 21–25%. That looks relaxed. But one CPU core reached about 98% in the 100,000 run. So a low average does not rule out a single-thread limit.
 
-### Split-and-claim: two transactions per actor
+The test tool also used more memory as the bursts got larger:
 
-Split-and-claim is a little trickier. Each actor submits a split and then a claim, so the appendix counts extrinsics, not actors.
+| Claims | Driver memory (RSS) | JavaScript heap |
+| ---: | ---: | ---: |
+| 20,000 | 1.189 GiB | 0.558 GiB |
+| 40,000 | 1.688 GiB | 0.946 GiB |
+| 100,000 | 2.820 GiB | 1.567 GiB |
 
-- **100, 1,000, paced 8,000 + 2,000 and 10,000 with an enlarged pool:** workload passed.
-- **10,000 burst, default pool:** incomplete. 8,192 of 10,000 splits verified, and the claims were withheld after the incomplete split wave.
-- **20,000:** the corrected rerun verified all **40,000** receipts and states. Its split wave launched in **1.099643 s against a 1.000 s target**, so it remains a generator launch-timing failure.
-- **40,000:** all **80,000** receipts passed. CI shutdown then timed out. These are separate outcomes.
-- **100,000:** all **200,000** receipts and the workload passed.
+This is the test tool's memory, not the chain's memory. See the [claim resources table](coinage-stress-metrics-appendix.md#claim-resources).
 
-The 20,000 case is a good example of why I keep outcomes separate. Every receipt and state checks out, and it still counts as a failure because our generator missed its launch target by about a tenth of a second.
+### Split-and-claim and recycling: the lifecycle campaign
 
-See the [split-and-claim outcomes](coinage-stress-metrics-appendix.md#split-and-claim-outcomes) and [wave timings](coinage-stress-metrics-appendix.md#split-and-claim-wave-timings).
+The lifecycle campaign ran 16 cases: eight for split-and-claim and eight for recycling. Before we look at timing, let's see what finished.
 
-### Recycling: where things got incomplete
+#### Figure 5: How many extrinsics have a verified receipt?
 
-Each actor submits one coin-load extrinsic, and we watch for ring-root coverage separately.
+[![Bar chart of verified receipts as a share of requested extrinsics for 16 lifecycle cases. 13 cases reach 100%. Split-and-claim at 10,000 on the default pool reaches 41%, recycling at 10,000 on the default pool 87% and recycling at 100,000 61%.](evidence/stress-metrics-2026-10-05/lifecycle-completion.svg)](evidence/stress-metrics-2026-10-05/lifecycle-completion.svg)
 
-- **100, 1,000, paced 8,000 + 2,000, 10,000 with an enlarged pool and 20,000:** workload passed.
-- **10,000 burst, default pool:** incomplete. 8,479 + 245 reconciled = **8,724 receipts**; 1,276 have no receipt. Readiness observed 5,002 of 10,000 by 247.079 s.
-- **40,000:** receipts, state and readiness all passed. CI then hit its two-minute shutdown guard with a retained TCP socket; the socket's owner is not established. Recovery passed in 64.917 s after the guard.
-- **100,000:** incomplete. All calls were submitted. 60,982 + 8 = **60,990 receipts**; 39,010 have no verified receipt. **39,917** members were observed ready and 60,083 were unobserved at 1,797.949 s. State has 61,851 members, including 861 state-only outcomes. Blocks 173363, 173365 and 173366 are absent from saved raw evidence. Stage duration is unavailable.
+*Figure 5. Each bar shows verified receipts divided by requested extrinsics. Split-and-claim requests two extrinsics for each actor. Grey bars are cases that did not pass.*
 
-Here's the tricky part with the 100,000 case. **Missing receipts and unobserved readiness do not prove non-execution or failure.** At the same time, state changes alone do not establish successful receipts. So I'm leaving it as incomplete rather than guessing in either direction.
+Most cases reached 100%. Three did not:
 
-See the [recycling outcomes](coinage-stress-metrics-appendix.md#recycling-outcomes), [wave timings](coinage-stress-metrics-appendix.md#recycling-wave-timings) and [readiness](coinage-stress-metrics-appendix.md#recycling-readiness) tables. Readiness is charted in [Figure 2](#figure-2-when-did-top-ups-and-recycled-coins-become-ready).
+- **Split-and-claim, 10,000 at once, default pool:** 8,192 of 10,000 splits verified. We did not send the claims.
+- **Recycling, 10,000 at once, default pool:** 8,724 of 10,000 verified.
+- **Recycling, 100,000:** 60,990 of 100,000 verified.
 
-A quick note on lifecycle state and resources. The appendix records state and backing per selected case, in raw fixture asset units. These lifecycle operations do not perform external-asset top-up debits. Resource windows cover the entire driver step, which can include fixtures and smoke. Network service cgroup memory covers several processes, not one collator. Pool maintenance counters in the data cover their stated epoch window and are not runtime execution timings. See the [lifecycle state and resources table](coinage-stress-metrics-appendix.md#lifecycle-state-and-resources).
+One case reached 100% and still failed. Split-and-claim with 20,000 actors verified all 40,000 receipts. But our tool took 1.10 seconds to launch the splits, and the target was 1.00 second. So it is a **launch-time failure**. This is why I keep each outcome separate.
 
-#### Figure 6: How long did lifecycle transactions take to finalize?
+Two cases passed, but CI did not shut down cleanly after the test. These are split-and-claim at 40,000 and recycling at 40,000. The workload result and the CI result are separate.
 
-How long did split, claim and recycle extrinsics take to reach a successful finalized receipt in each lifecycle case?
+#### Figure 6: How long did split-and-claim take?
 
-[![Two dot plots of finality p50 and p95 in seconds per lifecycle case and wave; split-and-claim p95 reaches 372.0 s at 100,000 actors and recycling p95 reaches 1,709.6 s at 100,000 actors](evidence/stress-metrics-2026-10-05/lifecycle-finality.svg)](evidence/stress-metrics-2026-10-05/lifecycle-finality.svg)
+[![Grouped bar chart of split p95 and claim p95 for eight split-and-claim cases. At 100,000 actors split p95 is 372 s and claim p95 is 319 s.](evidence/stress-metrics-2026-10-05/split-claim-timing.svg)](evidence/stress-metrics-2026-10-05/split-claim-timing.svg)
 
-*Figure 6. Dots show p50 and crosses show p95, in seconds. Upper panel: split-and-claim, with split and claim waves listed separately. Lower panel: recycling. Case names give the actor count; N is each wave's original timed population. Pool and pacing for each case are in the appendix.*
+*Figure 6. Blue is the split step and orange is the claim step. Both bars show finality p95. For the run in waves, the bars show the first wave of 8,000. Grey bars are cases that did not pass.*
 
-At 100,000 actors, split p95 was 372.0 s and claim p95 318.7 s. Recycling took much longer: p95 reached 1,095.3 s at 40,000 and 1,709.6 s at 100,000. One thing to watch for here. The 100,000 recycling N is 60,982 original successful watches, not the 60,990 verified receipts. See the [split-and-claim](coinage-stress-metrics-appendix.md#split-and-claim-wave-timings) and [recycling](coinage-stress-metrics-appendix.md#recycling-wave-timings) wave timings.
+Up to 10,000 actors, both steps settled in about 25 to 65 seconds. At 100,000 actors, splits took 372 seconds and claims took 319 seconds.
 
-#### Figure 7: What reached each stage, and how much memory did the driver use?
+The [split-and-claim wave timings](coinage-stress-metrics-appendix.md#split-and-claim-wave-timings) table has every wave.
 
-This figure answers two separate questions: how many lifecycle extrinsics reached each stage, and how much memory the claim load generator used.
+#### Figure 7: How long did recycling take?
 
-[![Upper panel: bar chart of requested, submitted and verified extrinsics for seven lifecycle cases. Lower panel: bar chart of claim driver peak RSS and heap used in GiB for the 20,000, 40,000 and 100,000-claim bursts](evidence/stress-metrics-2026-10-05/outcomes-resources.svg)](evidence/stress-metrics-2026-10-05/outcomes-resources.svg)
+[![Grouped bar chart of recycling finality p95 and readiness p95. Readiness p95 grows from 50 s at 100 actors to 1,485 s at 40,000 actors. The two incomplete cases are grey.](evidence/stress-metrics-2026-10-05/recycling-timing.svg)](evidence/stress-metrics-2026-10-05/recycling-timing.svg)
 
-*Figure 7. Upper panel: requested extrinsics, submitted extrinsics and verified receipts for seven lifecycle cases. Split-and-claim requests two extrinsics per actor. Lower panel: sampled peaks of the claim driver's resident memory (RSS) and JavaScript heap used, in GiB.*
+*Figure 7. Blue is finality p95: the load is settled. Orange is readiness p95: the coin is in a ring root. Grey bars are incomplete cases, and they show only the part that we observed.*
 
-Let's break it down. In the upper panel, a10000 requested 20,000 extrinsics but submitted only its 10,000 splits and verified 8,192. b10000 verified 8,724 of 10,000, and b100000 verified 60,990 of 100,000. In the lower panel, driver RSS / heap peaked at 1.189 / 0.558, 1.688 / 0.946 and 2.820 / 1.567 GiB. These samples cover the burst observer window only. They are driver process memory, not host RAM or network cgroup memory. See the [claim resources table](coinage-stress-metrics-appendix.md#claim-resources).
+Recycling is much slower than the other flows. At 40,000 actors, 95% of coins became ready in 1,485 seconds. That is almost 25 minutes.
+
+Be careful with the 100,000 bar. It shows 1,719 seconds, but only for the 39,917 coins that we saw before we stopped looking at 1,798 seconds. The other 60,083 coins have no timing. So the real p95 for 100,000 is not known.
+
+Here's the tricky part with the 100,000 case. **A missing receipt does not prove that a transaction failed.** But a state change alone does not prove a successful receipt either. Three blocks are also missing from the saved evidence. So I call it incomplete, and I don't guess in either direction.
+
+See the [recycling outcomes](coinage-stress-metrics-appendix.md#recycling-outcomes) and [recycling readiness](coinage-stress-metrics-appendix.md#recycling-readiness) tables.
 
 * * *
 
-## So what do the results actually tell us?
+## So what do the results tell us?
 
-I want to be careful here, because it's easy to read more into these numbers than they can support.
+It's easy to read too much into these numbers. Here's what I think they do and don't show.
 
-- Pool configuration changes backlog capacity. Block weight limits still govern what fits into a block. Larger pools gave more buffering; these results do not show more block-processing capacity.
-- Pacing and a larger queue each completed particular workloads. The comparisons also differ in actors, pool bytes, launch targets and harness versions.
-- The highest passing run is not a measured physical limit. These observations do not establish production capacity, sustainable TPS, runtime-weight accuracy, block execution wall time or PVF deadline compliance.
-- A successful receipt needs the raw extrinsic hash, canonical block and index, `System.ExtrinsicSuccess` and the expected operation event. State checks are separate. Saved finalized views from local RPC nodes establish evidence consistency, not independent cryptographic consensus or storage proofs.
-- This report re-extracts measurements. It does not rerun workloads or claim a new full receipt audit. Original attempts, selected reruns, CI results and later independent verification stay distinct, and their dates are in the appendix.
+- **The pool sets how many can wait. The block limit sets how fast they leave.** A bigger pool gave more space to wait. It did not make the chain process more.
+- **Waves and bigger pools both work.** Each one completed some workloads that a single burst on the default pool did not.
+- **A passed run is not a maximum.** It does not show production capacity, sustainable TPS, runtime-weight accuracy, block execution time or PVF deadline compliance.
+- **A receipt and a coin state are different checks.** We need both. Our evidence comes from local RPC nodes. It is consistent, but it is not a cryptographic proof.
+- **This report does not rerun anything.** It reads the saved measurements again. Original runs, reruns, CI results and later checks stay separate. Their dates are in the appendix.
 
 > A burst that passed tells us the chain handled that burst. **It isn't a capacity ceiling.**
 
-In the end, Coinage on this setup completed and verified a 150,000-claim burst and a 100,000-actor split-and-claim burst, with every receipt checked. We also know where runs stopped short: single 10,000 bursts on the default pool, and 100,000-actor recycling. That's a solid baseline, not the final word.
+In the end, Coinage on this setup verified a 150,000-claim burst and a 100,000-actor split-and-claim burst. We checked every receipt. We also know where runs stopped short: single 10,000 bursts on the default pool, and recycling with 100,000 actors. That's a solid baseline, not the final word.
 
 * * *
 
@@ -209,24 +219,32 @@ If you want to check my work, this is where to look.
 
 ### Measurement definitions
 
-- All timings are **seconds**. Finality includes client and RPC overhead. Readiness includes polling delay. Percentiles are nearest-rank values over the stated population and are never averaged across runs or nodes.
-- Later reconciliation adds receipt evidence, never invented latency samples. In the appendix, an em dash means the record does not establish the value. Claim ring readiness is not applicable.
-- Submission windows and launch rates measure the client, not node acceptance or execution throughput. A burst does not execute at once in one block.
-- **Stage duration.** Lifecycle stages include audits, any inter-wave signing and readiness observation, and exclude setup, fixtures, smoke and recovery. Top-up and claim stages include waits, observer shutdown and final state reads, and exclude fixture preparation, the final aggregate receipt audit and recovery.
-- Recovery checks observe liveness and author participation. Their durations are not queue-drain measurements.
-- Claim notification timings were re-extracted from saved `claim-burst-transactions.jsonl`, using the submitter's per-call monotonic start and all successful watches in each run. Finalized notification and completed receipt lookup are separate timestamps.
-- Queue plots use the node's actual ready gauge, separately for each People collator, during the recorded stage. Watched-plus-unwatched counts are not substituted for this gauge. Driver RSS and heap values use burst observer samples; their timestamps are in the download.
+- All times are in **seconds**. Finality includes client and RPC time. Readiness includes polling delay.
+- Percentiles are nearest-rank values over the stated population. We never average them across runs or nodes.
+- Reconciliation adds receipts. It never adds timing samples. In the appendix, an em dash means that the record does not give that value.
+- Launch time and launch rate measure the client. They do not measure how fast the node accepts or runs transactions. A burst does not run in one block.
+- **Stage duration.** Lifecycle stages include audits, signing between waves and readiness observation. They do not include setup, fixtures, smoke or recovery. Top-up and claim stages include waits, observer shutdown and final state reads. They do not include fixture setup, the final receipt audit or recovery.
+- Recovery checks show that the chain is live and both authors make blocks. Recovery time is not a queue-drain time.
+- Claim timings come from the saved `claim-burst-transactions.jsonl` file. They start at each call's own send time. The finalized notification and the receipt lookup are separate timestamps.
+- Queue charts use each collator's own `substrate_ready_transactions_number` gauge. Driver memory comes from the burst observer samples.
+- Proposal duration is block authoring time, not PVF execution time. The longest proposal took 2.970 seconds.
 
 ### Environment and pool configuration
 
-The lifecycle campaign used engine `7907a3bfa7b2e47535a74b7920086a05ca94773a`, snapshot bundle run 36614342201, six relay validators, two People collators and the snapshot's other parachains on one runner, with zero synthetic delay. Enlarged lifecycle pools used 256 MiB per People collator; default cases applied no override. No individual transactions were retried. Saved scheduling records cover 27 non-overlapping driver executions; they cannot establish orphaned-process lifetimes after lost runners. The 16 cases use the selected attempts from the completion audit; earlier setup failures remain in the [original-attempt record](lifecycle-campaign-results.md#outcomes).
+The lifecycle campaign used engine `7907a3bfa7b2e47535a74b7920086a05ca94773a` and snapshot bundle run 36614342201. It had six relay validators, two People collators and the other snapshot parachains, all on one runner, with no added delay. Bigger lifecycle pools used 256 MiB for each People collator. Default cases did not change the pool. We did not retry any transaction.
 
-The 20,000–100,000 claim series used the same engine and snapshot, `polkadot-weekly2026w33-rc2` binaries, and People runtime `next-people-paseo`, spec 3003000 / transaction version 5. Exact binary and snapshot hashes, runtime limits and configuration are in the download. Its runner reported AMD EPYC 7B13, 16 cores / 32 logical CPUs and about 62.8 GiB RAM; the network and driver shared it. Pool bytes stayed at 40 MiB, while entry limits, fixture batching, query concurrency and launch targets changed. Earlier run-specific configuration and provenance remain linked from the [evidence record](measured-results.md#evidence-record); settings are not assumed identical across series.
+The saved records show 27 driver runs that did not overlap. They cannot show if a process stayed alive after a runner was lost. The 16 cases are the selected attempts from the completion audit. Earlier setup failures are in the [original-attempt record](lifecycle-campaign-results.md#outcomes).
+
+The 20,000 to 100,000 claim runs used the same engine and snapshot, the `polkadot-weekly2026w33-rc2` binaries and the People runtime `next-people-paseo` (spec 3003000, transaction version 5). The runner had an AMD EPYC 7B13 with 16 cores, 32 logical CPUs and about 62.8 GiB of RAM. The network and the driver shared this machine. Pool size stayed at 40 MiB. Entry limits, fixture batching, query concurrency and launch targets changed between runs.
+
+Exact hashes, runtime limits and settings are in the download. Earlier run settings are in the [evidence record](measured-results.md#evidence-record). Do not assume that settings are the same across series.
 
 ### Evidence and downloads
 
-[Machine-readable metrics](evidence/stress-metrics-2026-10-05/metrics.json) and its [checksum](evidence/stress-metrics-2026-10-05/SHA256SUMS.txt) contain selected measurements, source filenames and hashes, run attempts, runtime and binary provenance, and sampled time series. Numeric duration fields use seconds. Millisecond source fields were converted and renamed with a `Seconds` suffix; the original source hashes still identify the unmodified preserved files. These small hosted files are not full raw receipt archives. GitHub artifacts expire after 30 days; locally preserved raw archives survive expiry but are not public downloads.
-
-Lifecycle cases were audited on **3 October 2026 UTC**. Exact artifact IDs, archive digests and expiry dates are in the [manifest](evidence/lifecycle-2026-10-03/manifest.json). Original-attempt history and per-job links are in the [pinned audited report](https://github.com/paritytech/technical-design/blob/e26a47902fa1cbc1a9dd5dca80d1dc5a2657a508/designs/individuality/non-fun-tests/test-design/lifecycle-campaign-results.md). Commits and verification sources per run are in the [lifecycle evidence references](coinage-stress-metrics-appendix.md#lifecycle-evidence-references) and [claim evidence references](coinage-stress-metrics-appendix.md#claim-evidence-references).
-
-Earlier top-up and 10,000-claim commits, original verification dates and artifact IDs remain in the [existing evidence record](measured-results.md#evidence-record). The [claim methodology](https://github.com/paritytech/polkadot-pop-e2e/blob/dfdc44a75bc91ea1610742b42b4e5278f4ad42fd/ci/previewnet/burst-results.md) is separate from the [top-up evidence guide](https://github.com/paritytech/polkadot-pop-e2e/blob/feat/th-coinage-top-up-burst/ci/previewnet/burst-results.md).
+- **Data:** [metrics.json](evidence/stress-metrics-2026-10-05/metrics.json) and its [checksum](evidence/stress-metrics-2026-10-05/SHA256SUMS.txt). The file has the selected measurements, source files and hashes, run attempts, runtime and binary details, and the sampled time series. Time fields are in seconds. Fields that we converted from milliseconds end in `Seconds`.
+- **Charts:** [make_charts.py](evidence/stress-metrics-2026-10-05/make_charts.py) draws every figure from `metrics.json`.
+- **Raw archives:** these small files are not the full raw receipt archives. GitHub artifacts expire after 30 days. We keep the raw archives locally, but they are not public.
+- **Lifecycle audit:** done on **3 October 2026 UTC**. Artifact IDs, archive digests and expiry dates are in the [manifest](evidence/lifecycle-2026-10-03/manifest.json). Original attempts and job links are in the [pinned audited report](https://github.com/paritytech/technical-design/blob/e26a47902fa1cbc1a9dd5dca80d1dc5a2657a508/designs/individuality/non-fun-tests/test-design/lifecycle-campaign-results.md).
+- **Commits and verification sources:** see the [lifecycle evidence references](coinage-stress-metrics-appendix.md#lifecycle-evidence-references) and [claim evidence references](coinage-stress-metrics-appendix.md#claim-evidence-references).
+- **Earlier runs:** top-up and 10,000-claim commits, verification dates and artifact IDs are in the [existing evidence record](measured-results.md#evidence-record). Earlier records also include the [1,000-claim baseline](measured-results.md#measured-results), the [memory-fix check](measured-results.md#verified-1000-claim-validation) and the [million-claim tool failure](measured-results.md#claim-generator-memory-retention--2-october-2026).
+- **Methods:** the [claim method](https://github.com/paritytech/polkadot-pop-e2e/blob/dfdc44a75bc91ea1610742b42b4e5278f4ad42fd/ci/previewnet/burst-results.md) and the [top-up evidence guide](https://github.com/paritytech/polkadot-pop-e2e/blob/feat/th-coinage-top-up-burst/ci/previewnet/burst-results.md).
