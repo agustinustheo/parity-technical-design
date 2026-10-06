@@ -29,6 +29,10 @@ Retain the effective default pool arguments, runtime and test commits, queue sam
 
 Report workload correctness separately from achieved pressure. For pressure, give the actual fraction of the 180-second window within the target band and all telemetry gaps; do not claim the pool stayed at exactly 8,000. For correctness, require matching finalized block bodies, successful dispatch, expected Coinage events and scenario-specific state checks. Expected quota-boundary rejections are outside the valid-load success denominator.
 
+The initial CI pressure gate requires at least 95% of the requested window in the target band, estimated from samples. This is a test-control threshold, not a product latency target. Keep the raw fraction even when the gate fails. A separate small smoke uses a one-transaction target for ten seconds; it validates the driver and does not establish sustained capacity.
+
+Stop admitting new work after the hold, drain submitted transactions, then finish any outstanding dependent lifecycle calls in a separately timed completion phase. Report the call mix separately for fill, hold and completion. Prepared inventory is finite; exhausting it before the deadline is a generator limitation. Quota inventory counts unload requests grouped by person allowance, with the distinct-person count reported separately.
+
 For [recycling-unavailable handling](../coinage/policy-examples/recycling-unavailable-handling.md), retain allowance and token-consumption observations, rejected counters and the distinction between recycler loading and unloading. Native-wallet policy execution and real period rollover remain separate coverage claims.
 
-Implementation and chain validation are pending. This specification does not report completed runs.
+The implementation is on `feat/th-coinage-sustained-pool` in `polkadot-pop-e2e`. Chain validation is pending. This specification does not report completed runs.
