@@ -4,6 +4,8 @@ We verified a burst of **100,000 claims**. These experiments establish completed
 
 Pacing and larger pool settings both produced successful 10,000-top-up runs. Later reconciliation verified all 88 dropped-watch transactions from the two incomplete runs. Those runs remain failed as 10,000-top-up experiments: one had 989 admission rejections, and the other never submitted its final 1,500 transactions.
 
+Merchant fan-in later verified up to **20,000 transfers to one merchant**; its default-pool 10,000 burst failed in the same way. The first free-quota and offboarding cases each verified 100 unloads and are preliminary.
+
 ## Consolidated stress metrics — 5 October 2026
 
 The [detailed stress-metrics report](coinage-stress-metrics.md) brings together the saved top-up, claim, split-and-claim and recycling measurements, with timing populations, pool settings, resource samples and [downloadable extracted data](evidence/stress-metrics-2026-10-05/metrics.json).
@@ -311,6 +313,55 @@ Download the committed [completion audit](evidence/lifecycle-2026-10-03/campaign
 The final audit records **24 raw archives preserved locally with hashes checked**; the final recycling-40,000 archive also matched GitHub's published digest. The manifest supplies artifact IDs, SHA-256 hashes, expiry dates and additional GitHub download links. GitHub artifacts have **30-day retention**. The committed summaries are served with this site; the raw archives are only retained locally and are not public website downloads. Summaries and hashes alone cannot reproduce the full receipt audit.
 
 Saved local RPC observations are not independent cryptographic consensus proofs. The campaign establishes neither a production capacity ceiling nor unlimited scalability, measured runtime-weight accuracy, block execution wall time or PVF deadline compliance.
+
+## Remaining-flow burst tests — 6–7 October 2026
+
+**Merchant fan-in verified up to 20,000 transfers to one merchant.** Five of six cases passed. The default-pool burst of 10,000 failed, as earlier claim and top-up bursts did. The first free-quota and offboarding cases each verified **100 unloads**; both are preliminary single cases.
+
+### Merchant fan-in outcomes
+
+[Run 37510457575, attempt 1](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/attempts/1), test commit [`7373fe8c1def`](https://github.com/paritytech/polkadot-pop-e2e/commit/7373fe8c1def9c8a5ef6531859ac85a844945bd5). Each transfer is a claim into a fresh destination key of one merchant, from a fixture-prepared coin. It does not include chat delivery or the production wallet. Attempt 2 was queued automatically and cancelled before any job ran; it has no results.
+
+| Transfers / job | Pattern | Pool | Watch-finalized | Receipt-verified | State-verified | Finality p50 / p95 / max (N) | Result |
+| --- | --- | --- | ---: | --- | ---: | --- | --- |
+| [100](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112480491326) | Burst | Default | 100 | 100 | 100 | 35.72 / 35.72 / 35.73 s (100) | **PASS** |
+| [1,000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112487225834) | Burst | Default | 1,000 | 1,000 | 1,000 | 30.42 / 30.45 / 30.45 s (1,000) | **PASS** |
+| [10,000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112493393120) | Burst | Default | 8,193 | 8,193 original + 818 reconciled = 9,011 | 9,011 | 41.25 / 45.31 / 45.35 s (8,193) | **FAIL** — completion target |
+| [10,000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112500858287) | Waves 8,000 + 2,000 | Default | 10,000 | 10,000 | 10,000 | 45.46 / 57.26 / 57.27 s (10,000) | **PASS** |
+| [10,000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112509307852) | Burst | Enlarged: 11,000 entries / 256 MiB | 10,000 | 10,000 | 10,000 | 49.47 / 61.18 / 61.21 s (10,000) | **PASS** |
+| [20,000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112517391792) | Burst | Enlarged: 22,000 entries / 256 MiB | 20,000 | 20,000 | 20,000 | 59.15 / 91.16 / 91.38 s (20,000) | **PASS** |
+
+Client launch windows were 0.006, 0.080, 0.543, 0.442 + 0.116 (paced), 0.474 and 0.950 s. They measure the client, not chain throughput. The [one-transfer smoke](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112430856228) passed. The five passing cases were rechecked locally with `verify-remaining-flow.py`.
+
+**Default-pool 10,000 reconciliation.** All 10,000 transfers were sent. 989 were rejected immediately at pool entry (`1016`, pool limit) and 818 watches were dropped. The run's receipt audit verified 8,193. On **7 October 2026** all 818 dropped watches were reconciled offline: each was in a saved, canonical, finalized block (173195–173198, both People nodes' views), with a matching extrinsic hash, `System.ExtrinsicSuccess` and `Coinage.CoinTransferred`. None of the 989 rejected transactions appears in a saved block. Receipt-verified is therefore 8,193 + 818 = **9,011**, equal to the state-check count. Reconciliation adds receipts, not timing samples, so finality stays on N = 8,193. The case **remains failed** as a 10,000-transfer experiment and was not rerun.
+
+Pacing and an enlarged pool each completed the tested merchant bursts; a single 10,000 burst on the default pool did not. This matches the earlier claim and top-up pattern. These separate runs do not establish a latency trend, sustainable throughput or production capacity.
+
+### Free-quota exhaustion and offboarding — preliminary
+
+Both runs used test commit [`37b02ba65a52`](https://github.com/paritytech/polkadot-pop-e2e/commit/37b02ba65a52370e64c91b6809e1f2258ce48d55) on the default pool. Receipts were re-verified offline from saved raw blocks with `verify-remaining-flow.py` on 7 October 2026.
+
+| Case / run | People / unloads | Setup top-ups | Receipt-verified | Finality p50 / p95 / max (N) | Result |
+| --- | --- | --- | ---: | --- | --- |
+| [Free quota, 100](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37570768389/attempts/1) | 1 / 100 | 100 / 100 finalized | 100 | 43.08 / 55.02 / 55.02 s (100) | **PASS** — preliminary |
+| [Offboarding, 100](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37590878841/attempts/1) | 100 / 100 | 100 / 100 finalized | 100 | 49.16 / 61.12 / 61.12 s (100) | **PASS** — preliminary |
+
+- **One person, 100 transactions.** The quota allowance limit was 1,000, so all 100 quota requests came from one person. This is not 100 users.
+- **Negative probes.** Reusing a consumed token was rejected with custom error 57 (`UnloadTokenAlreadyConsumed`). A counter at the limit was rejected with custom error 58 (`UnloadTokenCounterOutOfRange`).
+- **Proof generation, first measurement.** Each unload needs two ring-VRF proofs, one for the recycler alias and one for the free token: 200 proofs per case. Recycler proofs took 1.406 s at p50 and 1.455 s at most in the quota case (1.411 / 1.479 s for offboarding). Free-token proofs took 0.786 / 0.835 s (0.827 / 0.880 s). Proofs were generated before release, so this is client preparation cost, not submission-to-receipt time.
+- **Limits.** Real period rollover was not exercised. Policy rows come from a separate model, not native iOS or Android code. The other five quota and five offboarding profiles have not run yet, so there is no quota-exhaustion or offboarding conclusion.
+
+### Setup failures, now fixed
+
+| Scenario | What happened | What it establishes |
+| --- | --- | --- |
+| Free-quota exhaustion | First campaign: [smoke](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112436114495) passed; all six measured cases ([100](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112526429833), [1,000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112532845219), [10,000 burst](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112539289683), [10,000 paced](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112545534951), [10,000 enlarged](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112551090694), [20,000 enlarged](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112556615978)) stopped during fixture top-ups. The 100-request case has since passed independently. | Five profiles still to run; no burst-capacity conclusion yet |
+| Offboarding | Same setup failure; [smoke](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112440932803) passed. Measured cases: [100](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112561845169), [1,000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112567282589), [10,000 burst](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112572580926), [10,000 paced](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112577483596), [10,000 enlarged](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112582692332), [20,000 enlarged](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112587829742). The 100-person case has since passed independently. | Five profiles still to run; no burst-capacity conclusion yet |
+| Full flow | [Smoke](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112446686310) failed while preparing the network: GitHub reports the self-hosted runner lost communication. Six cases skipped. | No measured workload result; cause of the runner loss not established |
+
+The test client sent setup top-ups through a path the node allows only 16 at a time per connection. Above that, the extra transactions were silently never sent, so only 16 of 100 setup top-ups reached the pool. This was a test-harness bug, not a chain result. The [fix](https://github.com/paritytech/polkadot-pop-e2e/commit/e9c982bb296a344d8c6629dcc8a82971c107438e) sends setup through the same submission path as the workload. A sustained-load test is in development and is not yet reportable.
+
+Download the [case ledger](evidence/remaining-flow-2026-10-07/case-ledger-remaining-flow.json), the [merchant reconciliation](evidence/remaining-flow-2026-10-07/merchant/10000-burst-default/claim-burst-reconciliation.json) and the other selected summaries listed in the [checksum file](evidence/remaining-flow-2026-10-07/SHA256SUMS.txt). The [detailed report](coinage-stress-metrics.md#merchant-fan-in-many-payments-to-one-merchant) and [appendix](coinage-stress-metrics-appendix.md#merchant-fan-in-measurements) give the full field split. These are selected files, not full raw artifacts.
 
 ## How verification works
 

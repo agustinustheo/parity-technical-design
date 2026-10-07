@@ -1,12 +1,12 @@
 # Coinage stress metrics
 
-*How far we pushed four Coinage flows on a local PreviewNet, and what the numbers tell us.*
+*How far we pushed five Coinage flows on a local PreviewNet, and what the numbers tell us.*
 
 Stress testing a chain is not like stress testing a web server. A web server sends a response, and you are done. A chain transaction waits in a pool, goes into a block and then becomes final. Only then do we know if it worked.
 
 So I use a strict rule. A workload **passed** only when every transaction has a verified receipt and the final coin state is correct. Some cases also had a launch-time target.
 
-We ran four flows with 100 to 150,000 actors. We also tried one million. Some runs passed, some failed and some are incomplete. Here's what we found.
+We ran five flows with 100 to 150,000 actors. We also tried one million. Some runs passed, some failed and some are incomplete. Here's what we found.
 
 The exact numbers are in the [measurement appendix](coinage-stress-metrics-appendix.md). You can also [download the extracted data](evidence/stress-metrics-2026-10-05/metrics.json) and check it yourself.
 
@@ -18,6 +18,8 @@ The exact numbers are in the [measurement appendix](coinage-stress-metrics-appen
 - **Lifecycle campaign.** We selected 16 cases. 12 passed, one failed its launch-time target and three are incomplete. Split-and-claim with 100,000 actors verified all **200,000 receipts**.
 - **Recycling is the slowest flow.** 40,000 actors passed. 100,000 actors is **incomplete**: 60,990 verified receipts and 39,917 coins seen as ready.
 - **One million claims did not run.** The load generator ran out of memory. This is a limit of our tool, not of the chain.
+- **Merchant fan-in.** Up to 20,000 transfers to one merchant were verified. As with top-ups and claims, one burst of 10,000 on the default pool failed, and waves and a bigger pool both completed it.
+- **Unloads, preliminary.** The first free-quota and offboarding cases each verified 100 unloads. These are single small cases, not quota or offboarding conclusions.
 
 > These are finite bursts. They do not show a sustainable production TPS or a maximum capacity.
 
@@ -33,6 +35,7 @@ Each test sends signed Coinage extrinsics from many test accounts. I call these 
 | [Claim](scenarios/claim-burst.md) | Transfers one coin. The old coin goes away and a new coin replaces it. | 1 |
 | [Split-and-claim](scenarios/payment-burst.md) | Splits a coin, then claims it. | 2 |
 | [Recycling](scenarios/synchronised-recycling.md) | Loads a coin into a recycler. We then wait for the coin to become ready. | 1 |
+| [Merchant fan-in](scenarios/merchant-fan-in.md) | Transfers one coin to the same merchant, into a fresh destination key. | 1 |
 
 Let me be clear: **these tests do not cover the whole wallet**. They do not include the production wallet planner, chat delivery, TrUAPI or the mobile payment screens.
 
@@ -195,6 +198,77 @@ Here's the tricky part with the 100,000 case. **A missing receipt does not prove
 
 See the [recycling outcomes](coinage-stress-metrics-appendix.md#recycling-outcomes) and [recycling readiness](coinage-stress-metrics-appendix.md#recycling-readiness) tables.
 
+### Merchant fan-in: many payments to one merchant
+
+Merchant fan-in sends many coin transfers to one merchant. Each transfer goes into a fresh destination key, from a coin that the fixture prepared. It does not include chat delivery or the production wallet.
+
+We ran six cases in [run 37510457575, attempt 1](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/attempts/1). Five passed and one failed.
+
+| Transfers | Pattern | Pool | Verified receipts | Finality p95 (N) | Result |
+| ---: | --- | --- | ---: | --- | --- |
+| 100 | At once | Default | 100 | 35.72 s (100) | Passed |
+| 1,000 | At once | Default | 1,000 | 30.45 s (1,000) | Passed |
+| 10,000 | At once | Default | 9,011 | 45.31 s (8,193) | **Failed** |
+| 10,000 | Waves 8,000 + 2,000 | Default | 10,000 | 57.26 s (10,000) | Passed |
+| 10,000 | At once | Bigger: 11,000 entries | 10,000 | 61.18 s (10,000) | Passed |
+| 20,000 | At once | Bigger: 22,000 entries | 20,000 | 91.16 s (20,000) | Passed |
+
+Let's start with the case that failed. We sent 10,000 transfers at once on the default pool. The pool rejected 989 immediately, and we lost the watch on 818 more. The run's own audit verified 8,193 receipts.
+
+On 7 October 2026 we reconciled the 818 lost watches from saved blocks. All 818 were in canonical, finalized blocks, with success and the `Coinage.CoinTransferred` event. None of the 989 rejected transfers is in a saved block. So the total is 8,193 + 818 = **9,011 verified receipts**, which matches the 9,011 correct coin states.
+
+This case **stays failed**. Reconciliation adds receipts, not timing samples, so its p95 still uses the 8,193 timed transfers.
+
+> Same pattern, new flow: one 10,000 burst on the default pool fell short. **Waves and a bigger pool both completed it.**
+
+The appendix has the [full merchant measurements](coinage-stress-metrics-appendix.md#merchant-fan-in-measurements), with launch windows and job links. As with the other flows, each row is a separate setup. Don't read the p95 column as a trend.
+
+### Free-quota and offboarding: first unload cases (preliminary)
+
+Both of these flows unload coins into the external asset. Each one has only a single measured case so far, so I treat both as preliminary.
+
+**Free-quota exhaustion, 100 requests.** [Run 37570768389](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37570768389/attempts/1) sent 100 unload requests on the default pool. All 100 setup top-ups finalized first. We verified all 100 unload receipts, and we checked them again offline from the saved blocks. Finality p50 / p95 / max was 43.08 / 55.02 / 55.02 seconds, with N = 100.
+
+The free-token allowance was 1,000. So all 100 requests came from **one person**. This is 100 transactions from 1 person, not 100 users.
+
+We also tried two requests that must fail, and both failed as designed:
+
+- Reusing a consumed token was rejected with custom error 57 (`UnloadTokenAlreadyConsumed`).
+- A counter at the limit was rejected with custom error 58 (`UnloadTokenCounterOutOfRange`).
+
+**Offboarding, 100 people.** [Run 37590878841](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37590878841/attempts/1) sent 100 unloads from 100 different people on the default pool. All 100 setup top-ups finalized. We verified all 100 unload receipts locally from the saved artifact. Finality p50 / p95 / max was 49.16 / 61.12 / 61.12 seconds, with N = 100.
+
+**Proof generation, a first measurement.** Each unload needs two ring-VRF proofs: one for the recycler alias and one for the free token. So each case made 200 proofs.
+
+| Case | Recycler proof p50 / max | Free-token proof p50 / max |
+| --- | --- | --- |
+| Free quota, 100 | 1.406 / 1.455 s | 0.786 / 0.835 s |
+| Offboarding, 100 | 1.411 / 1.479 s | 0.827 / 0.880 s |
+
+So one unload took about 2.2 seconds of proof work. The client made the proofs before it sent anything. This is the client's preparation cost, not part of finality.
+
+What these cases don't show: we did not test a real period rollover. The policy rows come from a separate model, not from native iOS or Android code. The other five quota profiles and five offboarding profiles have not run yet. See the [quota and offboarding table](coinage-stress-metrics-appendix.md#free-quota-and-offboarding-measurements).
+
+### Which tests did not reach their measured load?
+
+Some tests stopped before their measured workload began. These have no result yet.
+
+| Scenario | What happened | What it establishes |
+| --- | --- | --- |
+| Free-quota exhaustion | First campaign: smoke passed; all six measured cases stopped during fixture top-ups. Cause found and fixed (below). The 100-request case has since passed independently. | Five profiles still to run; no burst-capacity conclusion yet |
+| Offboarding | Same setup failure as quota; smoke passed. The 100-person case has since passed independently. | Five profiles still to run; no burst-capacity conclusion yet |
+| Full flow | Smoke failed while preparing the network: GitHub reports the self-hosted runner lost communication. Six cases skipped. | No measured workload result; cause of the runner loss not established |
+
+Why did quota and offboarding stop? The test client sent its setup top-ups through a path that the node allows only 16 at a time on each connection. Above that, the extra transactions were silently never sent. Only 16 of the 100 setup top-ups reached the pool. This was a bug in our test harness, not a chain result. The [fix](https://github.com/paritytech/polkadot-pop-e2e/commit/e9c982bb296a344d8c6629dcc8a82971c107438e) sends setup through the same path as the workload.
+
+The jobs are in [run 37510457575, attempt 1](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/attempts/1):
+
+- **Quota:** [smoke](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112436114495), [100](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112526429833), [1,000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112532845219), [10,000 at once](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112539289683), [10,000 in waves](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112545534951), [10,000 bigger pool](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112551090694), [20,000 bigger pool](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112556615978).
+- **Offboarding:** [smoke](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112440932803), [100](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112561845169), [1,000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112567282589), [10,000 at once](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112572580926), [10,000 in waves](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112577483596), [10,000 bigger pool](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112582692332), [20,000 bigger pool](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112587829742).
+- **Full flow:** [smoke](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112446686310); the six cases were skipped.
+
+A sustained-load test is also in development. It is not reportable yet.
+
 * * *
 
 ## So what do the results tell us?
@@ -206,6 +280,7 @@ It's easy to read too much into these numbers. Here's what I think they do and d
 - **A passed run is not a maximum.** It does not show production capacity, sustainable TPS, runtime-weight accuracy, block execution time or PVF deadline compliance.
 - **A receipt and a coin state are different checks.** We need both. Our evidence comes from local RPC nodes. It is consistent, but it is not a cryptographic proof.
 - **This report does not rerun anything.** It reads the saved measurements again. Original runs, reruns, CI results and later checks stay separate. Their dates are in the appendix.
+- **Merchant fan-in follows the same pattern.** Waves and a bigger pool each completed 10,000 transfers to one merchant, and one default-pool burst did not. These separate runs do not show a latency trend, sustainable throughput or production capacity.
 
 > A burst that passed tells us the chain handled that burst. **It isn't a capacity ceiling.**
 
@@ -247,4 +322,5 @@ Exact hashes, runtime limits and settings are in the download. Earlier run setti
 - **Lifecycle audit:** done on **3 October 2026 UTC**. Artifact IDs, archive digests and expiry dates are in the [manifest](evidence/lifecycle-2026-10-03/manifest.json). Original attempts and job links are in the [pinned audited report](https://github.com/paritytech/technical-design/blob/e26a47902fa1cbc1a9dd5dca80d1dc5a2657a508/designs/individuality/non-fun-tests/test-design/lifecycle-campaign-results.md).
 - **Commits and verification sources:** see the [lifecycle evidence references](coinage-stress-metrics-appendix.md#lifecycle-evidence-references) and [claim evidence references](coinage-stress-metrics-appendix.md#claim-evidence-references).
 - **Earlier runs:** top-up and 10,000-claim commits, verification dates and artifact IDs are in the [existing evidence record](measured-results.md#evidence-record). Earlier records also include the [1,000-claim baseline](measured-results.md#measured-results), the [memory-fix check](measured-results.md#verified-1000-claim-validation) and the [million-claim tool failure](measured-results.md#claim-generator-memory-retention--2-october-2026).
+- **Merchant, quota and offboarding (7 October 2026):** selected summaries, audits, the merchant reconciliation, proof timings, verifier output and the case ledger are in the [remaining-flow evidence folder](evidence/remaining-flow-2026-10-07/SHA256SUMS.txt). Commits and jobs are in the [merchant and quota evidence references](coinage-stress-metrics-appendix.md#merchant-and-quota-evidence-references).
 - **Methods:** the [claim method](https://github.com/paritytech/polkadot-pop-e2e/blob/dfdc44a75bc91ea1610742b42b4e5278f4ad42fd/ci/previewnet/burst-results.md) and the [top-up evidence guide](https://github.com/paritytech/polkadot-pop-e2e/blob/feat/th-coinage-top-up-burst/ci/previewnet/burst-results.md).
