@@ -41,6 +41,69 @@ Let me be clear: **these tests do not cover the whole wallet**. They do not incl
 
 Some test coins are created directly, not through normal issuance. So these tests do not prove the normal backing accounting. Setup transactions and smoke transactions are not in any count.
 
+### Which scenarios did we cover?
+
+We have not tested every scenario yet. Here's where each one stands.
+
+| Scenario | Status | What we ran |
+| --- | --- | --- |
+| [Top-up burst](scenarios/top-up-burst.md) | Measured | 1,000 to 10,000 top-ups |
+| [Claim burst](scenarios/claim-burst.md) | Measured | 1,000 to 150,000 claims |
+| [Payment burst](scenarios/payment-burst.md) | Partly measured | Split-and-claim only, 100 to 100,000 actors. Exact and unload payment plans are still to come. |
+| [Merchant fan-in](scenarios/merchant-fan-in.md) | Measured | 100 to 20,000 transfers to one merchant |
+| [Synchronised recycling](scenarios/synchronised-recycling.md) | Measured | 100 to 100,000 coin loads into one recycler |
+| [Free-quota exhaustion](scenarios/free-quota-exhaustion.md) | Preliminary | One case: 100 requests from one person. Five profiles to run. |
+| [Offboarding burst](scenarios/offboarding-burst.md) | Preliminary | One case: 100 people. Five profiles to run. |
+| [Full-flow ramp](scenarios/full-flow-ramp.md) | Blocked | The runner lost its connection during setup. |
+| [Sponsored-pot exhaustion](scenarios/sponsored-pot-exhaustion.md) | Not run yet | Loads that exceed what a sponsored pot can hold |
+| [Cleanup backlog](scenarios/cleanup-backlog.md) | Not run yet | Expired-state cleanup while users keep paying |
+| [Instance proliferation](scenarios/instance-proliferation.md) | Not run yet | Many Coinage instances at once |
+| [Sustained load](sustained-pool-campaign.md) | In development | A three-minute full pool. Not reportable yet. |
+
+### What machine did we test on?
+
+Every run used the self-hosted `parity-large` GitHub runner. We saved the hardware details for the 20,000 to 100,000-claim runs:
+
+| Part | Value |
+| --- | --- |
+| Machine | Google Cloud VM, Linux 6.17 |
+| CPU | AMD EPYC 7B13: 16 cores, 32 logical CPUs |
+| RAM | 62.8 GiB |
+| Disk | 193 GB system disk |
+| Chain nodes | 11 in total: 6 relay validators, 2 People collators, and 1 collator each for Asset Hub, Bulletin and Web3 Storage |
+| Load generator | One Node.js process |
+| Network delay | None added |
+
+All of this runs on **one machine**. So the load generator shares the CPU and memory with the nodes that it tests.
+
+### How busy was the machine?
+
+We don't have a CPU or memory metric inside each node. But we saved two things every few seconds: the machine's total CPU and memory, and a process list with each process's memory and CPU time. From those, I can show how the load changed from an idle network to the burst.
+
+#### Figure 1: What did the machine do during the 100,000-claim run?
+
+[![Two line charts over time for the 100,000-claim run. Upper: whole-machine CPU is about 5% busy when idle, 5 to 9% during fixture preparation and averages 12% with a 21% peak during the burst; the busiest single CPU often reaches 100%. Lower: machine memory grows from about 12 GiB idle to a 19.8 GiB peak; the People collators peak at 3.4 and 2.9 GiB and the load generator at 2.8 GiB.](evidence/stress-metrics-2026-10-05/machine-resources.svg)](evidence/stress-metrics-2026-10-05/machine-resources.svg)
+
+*Figure 1. Time runs from the network start to after the burst. The grey band is fixture preparation and the orange band is the burst. Upper panel: share of all 32 logical CPUs that were busy, and the busiest single CPU. Lower panel: memory used by the whole machine, by each People collator and by the load generator.*
+
+So what changed? The whole machine went from about **5% busy when idle to 12% on average during the burst, with a 21% peak**. That is about 4 of the 32 CPUs on average. The machine never came close to full.
+
+Memory went from about **12 GiB idle to a 19.8 GiB peak**. Be careful with this number. **The load generator adds to it.** It keeps every signed transaction and every watch in memory, so it grows with the burst. During fixture preparation, the machine's memory went up by about 4 GiB, and the load generator alone took about 2.5 GiB of that.
+
+The busiest single CPU often hit 100%, also during fixture preparation, when the collators were almost idle. So a full single CPU here does not always mean a busy chain. The load generator signs on one thread, and we can't tell from these samples which process used that CPU.
+
+Here are the three large claim bursts side by side:
+
+| Claims | Machine CPU: idle → burst average (peak) | Machine memory: idle → burst peak | Collator 1 / 2 CPU during burst | Collator 1 / 2 memory, burst peak |
+| ---: | --- | --- | --- | --- |
+| 20,000 | 4.5% → 8.6% (20.7%) | 11.9 → 14.8 GiB | 0.59 / 0.44 cores | 1.80 / 1.88 GiB |
+| 40,000 | 4.5% → 10.2% (25.2%) | 12.0 → 15.8 GiB | 0.98 / 0.60 cores | 2.17 / 2.16 GiB |
+| 100,000 | 4.6% → 12.4% (21.3%) | 11.9 → 19.8 GiB | 1.32 / 0.66 cores | 3.38 / 2.95 GiB |
+
+"Cores" is the average number of CPU cores that the collator process used during the burst. When idle, each People collator used about 0.02 cores and 1.4 to 1.6 GiB. So the burst made collator 1 work much harder, and its memory grew with the size of its queue. I explain why collator 1 works harder than collator 2 under [Figure 5](#figure-5-how-full-did-the-queue-get).
+
+The [host resource data](evidence/host-resources-2026-10-07/host-resources.json) has every sample and the definitions.
+
 ### Words I use
 
 - **Default pool:** 8,192 entries and 20 MiB for each People collator. A **bigger pool** has a larger limit for one run, for example 11,000 entries.
@@ -84,15 +147,29 @@ Reconciliation on 30 September 2026 found 40 and 48 more receipts in the two fai
 
 The three newer runs all recovered after the test, and their backing matched the verified top-ups. The earlier runs' recovery records are in the [top-up results](measured-results.md#measured-results). The [top-up measurements table](coinage-stress-metrics-appendix.md#top-up-measurements) has the full numbers.
 
-#### Figure 1: How long did top-ups take?
+#### Figure 2: How long did top-ups take?
 
 [![Grouped bar chart of top-up finality p95 and readiness p95 for six runs. The four passing runs settle in 53 to 256 seconds and become ready in 106 to 353 seconds. The two failed runs are grey.](evidence/stress-metrics-2026-10-05/topup-timing.svg)](evidence/stress-metrics-2026-10-05/topup-timing.svg)
 
-*Figure 1. Each run has two bars. Blue is finality p95: the payment is settled. Orange is readiness p95: the voucher can be used. Grey bars are failed runs, and they show only the transactions that we timed.*
+*Figure 2. Each run has two bars. Blue is finality p95: the payment is settled. Orange is readiness p95: the voucher can be used. Grey bars are failed runs, and they show only the transactions that we timed.*
 
 So what does this chart tell us? For the larger passing runs, 95% of top-ups settled in 183 to 256 seconds. The vouchers became ready about 80 to 100 seconds after that.
 
-Don't read this chart as a trend. Each run has a different size, schedule and pool. The two failed runs also have fewer timed transactions, so their bars are not the full story.
+Each run has a different size, schedule and pool. The two failed runs also have fewer timed transactions, so their bars are not the full story. But when I put the runs side by side by batch size, a clear pattern shows up.
+
+#### Figure 3: Does top-up time grow with the batch size?
+
+[![Scatter chart of top-up p95 against the largest batch that entered the pool at once. Finality rises from 53 s at 1,000 to 256 s at 10,000, about 22 s per 1,000 top-ups. Readiness rises from 106 s to 353 s, about 28 s per 1,000. The two failed runs sit close to the same lines.](evidence/stress-metrics-2026-10-05/topup-trend.svg)](evidence/stress-metrics-2026-10-05/topup-trend.svg)
+
+*Figure 3. The horizontal axis is the number of top-ups that entered the pool in the largest single batch: 7,000 for the 7,000 + 3,000 run, and 9,011 for the failed 10,000 burst. Filled dots are passing runs; the dashed lines are a straight-line fit through them. Hollow dots are failed runs, which are not used for the lines.*
+
+This is the most interesting top-up result. **Time grows in a straight line with the batch size.** Each extra 1,000 top-ups in the batch added about **22 seconds** to finality p95 and about **28 seconds** to readiness p95. Every passing run is within 4 seconds of the finality line and within 8 seconds of the readiness line. The two failed runs also sit close to the lines.
+
+In percentages: 10 times more top-ups (1,000 to 10,000) made finality p95 **383% longer** (53 to 256 seconds) and readiness p95 **234% longer** (106 to 353 seconds). Time grew slower than the batch, because part of the time is a fixed cost: about 29 seconds for finality and 76 seconds for readiness, even for a small batch.
+
+Why a straight line? A block can only hold a fixed amount of work, so a queue drains at a steady rate. For finality, 22 seconds per 1,000 top-ups is about 45 top-ups per second. We see the same steady drain for claims in [Figure 6](#figure-6-how-many-claims-fit-in-one-block).
+
+Keep this in proportion. There are only four passing runs. They differ in pool, schedule and harness version, and the p95 for a run in waves covers both waves. So this is a strong pattern, not a proven model.
 
 ### Claims: the lightest flow, and the biggest bursts
 
@@ -110,35 +187,49 @@ What about one million? We tried. The load generator used all of its 24 GiB of m
 
 The [claim measurements](coinage-stress-metrics-appendix.md#claim-measurements) table has all launch times and stage times.
 
-#### Figure 2: How long did the slowest claims wait?
+#### Figure 4: How long did the slowest claims wait?
 
 [![Range plot of claim finality. At 20,000 claims p50 is 66 s and p95 is 94 s. At 40,000 claims p50 is 92 s and p95 is 139 s. At 100,000 claims p50 is 179 s, p95 is 297 s and p99 is 306 s.](evidence/stress-metrics-2026-10-05/claim-finality.svg)](evidence/stress-metrics-2026-10-05/claim-finality.svg)
 
-*Figure 2. Each line goes from p50 (the open circle) to p99 (the diamond). The filled circle is p95. Every run timed all of its claims.*
+*Figure 4. Each line goes from p50 (the open circle) to p99 (the diamond). The filled circle is p95. Every run timed all of its claims.*
 
-Look at the right end of each line. p95 and p99 are almost on top of each other, never more than 9 seconds apart. So there was no long tail of very slow claims. Claims waited in a queue, and the queue drained at a steady rate.
+What do the three marks mean?
+
+- **p50:** half of the claims settled faster than this. It's the typical wait.
+- **p95:** 95% settled faster. Only the slowest 1 in 20 took longer.
+- **p99:** 99% settled faster. Only the slowest 1 in 100 took longer.
+
+So why are p95 and p99 almost the same, like 139 and 140 seconds at 40,000? Because the slowest claims all leave in the last block. The slowest 5% of 40,000 claims is 2,000 claims, and one block holds up to 2,363 ([Figure 6](#figure-6-how-many-claims-fit-in-one-block)). So the slowest 5% and the slowest 1% settle together in the same final block. At 20,000 it's the same: the slowest 5% is 1,000 claims, all in the last block.
+
+At 100,000 the slowest 5% is 5,000 claims, which is more than two blocks. So p95 and p99 land in different blocks near the end, and they're 9 seconds apart: 297 and 306 seconds. In every run, there was no long tail of very slow claims. Claims waited in a queue, and the queue drained at a steady rate.
 
 These are three separate setups with different pool limits. Don't draw a line through them.
 
-#### Figure 3: How full did the queue get?
+#### Figure 5: How full did the queue get?
 
 [![Three line charts of claims waiting in each collator's ready queue. Collator 1 peaks at 20,000, 37,637 and 88,185 claims. Both queues are empty at about 75, 116 and 293 seconds.](evidence/stress-metrics-2026-10-05/pool.svg)](evidence/stress-metrics-2026-10-05/pool.svg)
 
-*Figure 3. One panel for each burst size. The lines show how many claims waited in each People collator's ready queue. The grey line shows when both queues were empty.*
+*Figure 5. One panel for each burst size. The lines show how many claims waited in each People collator's ready queue. The grey line shows when both queues were empty.*
 
-The queue filled up in the first 10 to 50 seconds. Then it went down at a steady rate until it was empty. That steady rate matches the fixed number of claims in each block (Figure 4).
+The queue filled up in the first 10 to 50 seconds. Then it went down at a steady rate until it was empty. That steady rate matches the fixed number of claims in each block (Figure 6).
 
 We sampled the queue every five seconds, so we can miss short peaks.
 
-#### Figure 4: How many claims fit in one block?
+Why does collator 1 hold so many more claims than collator 2? At 100,000 claims it peaked at 88,185, and collator 2 at only 18,821. **Our load generator sends every claim to collator 1.** Its RPC address is collator 1 (port 10010), and that's the only node it talks to. Collator 2 only gets the claims that collator 1 passes on over the peer-to-peer network. The node passes transactions on in batches, and collator 2 must check each one before it enters its own queue. So collator 2 holds fewer at any moment. This is our reading of the setup; we did not measure the gossip itself.
+
+The CPU numbers agree. During the 100,000 burst, collator 1 used 1.32 cores and collator 2 used 0.66 cores (see [How busy was the machine?](#how-busy-was-the-machine)).
+
+Can we split the work evenly? Yes, but it's a test change, not a chain change: the load generator could send half of the claims to each collator. Both queues still empty at the same time, because a claim leaves both queues as soon as it is in a block. A real wallet population would also spread over many RPC nodes, so the even split is closer to production.
+
+#### Figure 6: How many claims fit in one block?
 
 [![Three bar charts of verified claims in each block. Every full block holds 2,363 claims. The last block in each run holds fewer: 1,096, 2,192 and 754.](evidence/stress-metrics-2026-10-05/blocks.svg)](evidence/stress-metrics-2026-10-05/blocks.svg)
 
-*Figure 4. Each bar is one finalized block. Blue bars are full blocks. The grey bar is the last block, which held the claims that were left.*
+*Figure 6. Each bar is one finalized block. Blue bars are full blocks. The grey bar is the last block, which held the claims that were left.*
 
 This is the clearest result in the report. **Every full block held exactly 2,363 claims.** In the 100,000 run, all 42 full blocks stopped because they hit the block weight limit.
 
-This also explains Figure 3. The pool decides how many claims can wait. The block weight limit decides how fast they leave.
+This also explains Figure 5. The pool decides how many claims can wait. The block weight limit decides how fast they leave. Each new block takes about 2,363 claims out of the queue, so the lines in Figure 5 go down in a straight line.
 
 > A bigger pool lets more claims wait. **It doesn't make blocks hold more claims.**
 
@@ -158,11 +249,11 @@ This is the test tool's memory, not the chain's memory. See the [claim resources
 
 The lifecycle campaign ran 16 cases: eight for split-and-claim and eight for recycling. Before we look at timing, let's see what finished.
 
-#### Figure 5: How many extrinsics have a verified receipt?
+#### Figure 7: How many extrinsics have a verified receipt?
 
 [![Bar chart of verified receipts as a share of requested extrinsics for 16 lifecycle cases. 13 cases reach 100%. Split-and-claim at 10,000 on the default pool reaches 41%, recycling at 10,000 on the default pool 87% and recycling at 100,000 61%.](evidence/stress-metrics-2026-10-05/lifecycle-completion.svg)](evidence/stress-metrics-2026-10-05/lifecycle-completion.svg)
 
-*Figure 5. Each bar shows verified receipts divided by requested extrinsics. Split-and-claim requests two extrinsics for each actor. Grey bars are cases that did not pass.*
+*Figure 7. Each bar shows verified receipts divided by requested extrinsics. Split-and-claim requests two extrinsics for each actor. Grey bars are cases that did not pass.*
 
 Most cases reached 100%. Three did not:
 
@@ -174,21 +265,21 @@ One case reached 100% and still failed. Split-and-claim with 20,000 actors verif
 
 Two cases passed, but CI did not shut down cleanly after the test. These are split-and-claim at 40,000 and recycling at 40,000. The workload result and the CI result are separate.
 
-#### Figure 6: How long did split-and-claim take?
+#### Figure 8: How long did split-and-claim take?
 
 [![Grouped bar chart of split p95 and claim p95 for eight split-and-claim cases. At 100,000 actors split p95 is 372 s and claim p95 is 319 s.](evidence/stress-metrics-2026-10-05/split-claim-timing.svg)](evidence/stress-metrics-2026-10-05/split-claim-timing.svg)
 
-*Figure 6. Blue is the split step and orange is the claim step. Both bars show finality p95. For the run in waves, the bars show the first wave of 8,000. Grey bars are cases that did not pass.*
+*Figure 8. Blue is the split step and orange is the claim step. Both bars show finality p95. For the run in waves, the bars show the first wave of 8,000. Grey bars are cases that did not pass.*
 
 Up to 10,000 actors, both steps settled in about 25 to 65 seconds. At 100,000 actors, splits took 372 seconds and claims took 319 seconds.
 
 The [split-and-claim wave timings](coinage-stress-metrics-appendix.md#split-and-claim-wave-timings) table has every wave.
 
-#### Figure 7: How long did recycling take?
+#### Figure 9: How long did recycling take?
 
 [![Grouped bar chart of recycling finality p95 and readiness p95. Readiness p95 grows from 50 s at 100 actors to 1,485 s at 40,000 actors. The two incomplete cases are grey.](evidence/stress-metrics-2026-10-05/recycling-timing.svg)](evidence/stress-metrics-2026-10-05/recycling-timing.svg)
 
-*Figure 7. Blue is finality p95: the load is settled. Orange is readiness p95: the coin is in a ring root. Grey bars are incomplete cases, and they show only the part that we observed.*
+*Figure 9. Blue is finality p95: the load is settled. Orange is readiness p95: the coin is in a ring root. Grey bars are incomplete cases, and they show only the part that we observed.*
 
 Recycling is much slower than the other flows. At 40,000 actors, 95% of coins became ready in 1,485 seconds. That is almost 25 minutes.
 
@@ -198,22 +289,49 @@ Here's the tricky part with the 100,000 case. **A missing receipt does not prove
 
 See the [recycling outcomes](coinage-stress-metrics-appendix.md#recycling-outcomes) and [recycling readiness](coinage-stress-metrics-appendix.md#recycling-readiness) tables.
 
+#### Figure 10: What happens to recycling time when the burst doubles?
+
+[![Line chart of recycling p95 at 10,000, 20,000 and 40,000 actors with a bigger pool. Finality goes 233, 616 and 1,095 s, adding 382 then 479 s. Readiness goes 354, 810 and 1,485 s, adding 456 then 675 s.](evidence/stress-metrics-2026-10-05/recycling-growth.svg)](evidence/stress-metrics-2026-10-05/recycling-growth.svg)
+
+*Figure 10. Passing recycling cases with a bigger pool. Each step on the horizontal axis doubles the number of actors. The coloured numbers are the added seconds for each doubling. The incomplete 100,000 case is not shown, because its p95 covers only part of the burst.*
+
+There's an interesting pattern here. Each time the burst doubled, finality p95 went up by about **400 to 500 seconds** (+382, then +479) and readiness p95 by about **450 to 700 seconds** (+456, then +675).
+
+The step is not the same each time; it grew. And three points can't tell us the exact shape of the curve. To know, we need a passing case between 40,000 and 100,000, such as 80,000.
+
+Split-and-claim grows more slowly. Its split p95 went from 61 seconds at 10,000 actors to 372 seconds at 100,000: about 3.5 seconds per 1,000 actors (Figure 8).
+
+### What happens when 10,000 arrive at once on the default pool?
+
+Every flow ran one burst of 10,000 on the default pool. **Every one of them rejected exactly 989 transactions at the door.** Here's what happened to all 10,000 in each flow:
+
+| Flow | Rejected at pool entry | Watch lost | Verified receipts | No verified receipt |
+| --- | ---: | --- | ---: | ---: |
+| Top-up | 989 (9.9%) | 40, all found later | 9,011 (90.1%) | 989 (9.9%) |
+| Claim | 989 (9.9%) | 819; the coins had not changed at the cutoff | 8,192 (81.9%) | 1,808 (18.1%) |
+| Merchant fan-in | 989 (9.9%) | 818, all found later | 9,011 (90.1%) | 989 (9.9%) |
+| Split (first step of split-and-claim) | 989 (9.9%) | 819, none found | 8,192 (81.9%) | 1,808 (18.1%) |
+| Recycling | 989 (9.9%) | 532, of which 245 found later | 8,724 (87.2%) | 1,276 (12.8%) |
+
+Why exactly 989? Because 10,000 − 989 = 9,011, and 9,011 = 8,192 + 819. The default pool has 8,192 slots for ready transactions. Substrate also keeps a second queue for transactions that can't run yet, [one tenth of that size](https://github.com/paritytech/polkadot-sdk/blob/master/substrate/client/transaction-pool/src/builder.rs): 819. So the pool took 9,011 and turned the rest away immediately. The 819 lost watches in the claim and split runs are the same size as that second queue, but we have not confirmed that they are the same transactions.
+
+So, on the default pool, about **1 in 10 transactions failed straight away**, in every flow. Between 10% and 18% ended with no verified receipt. Waves and a bigger pool both avoided this.
+
 ### Merchant fan-in: many payments to one merchant
 
 Merchant fan-in sends many coin transfers to one merchant. Each transfer goes into a fresh destination key, from a coin that the fixture prepared. It does not include chat delivery or the production wallet.
 
 We ran six cases in [run 37510457575, attempt 1](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/attempts/1). Five passed and one failed.
 
-| Transfers | Pattern | Pool | Verified receipts | Finality p95 (N) | Result |
-| ---: | --- | --- | ---: | --- | --- |
-| 100 | At once | Default | 100 | 35.72 s (100) | Passed |
-| 1,000 | At once | Default | 1,000 | 30.45 s (1,000) | Passed |
-| 10,000 | At once | Default | 9,011 | 45.31 s (8,193) | **Failed** |
-| 10,000 | Waves 8,000 + 2,000 | Default | 10,000 | 57.26 s (10,000) | Passed |
-| 10,000 | At once | Bigger: 11,000 entries | 10,000 | 61.18 s (10,000) | Passed |
-| 20,000 | At once | Bigger: 22,000 entries | 20,000 | 91.16 s (20,000) | Passed |
+#### Figure 11: How long did merchant transfers take?
 
-Let's start with the case that failed. We sent 10,000 transfers at once on the default pool. The pool rejected 989 immediately, and we lost the watch on 818 more. The run's own audit verified 8,193 receipts.
+[![Bar chart of merchant fan-in finality p95 for six cases. 100 transfers settle in 35.7 s, 1,000 in 30.5 s, 10,000 in waves in 57.3 s, 10,000 with a bigger pool in 61.2 s and 20,000 with a bigger pool in 91.2 s. The failed default-pool 10,000 burst is grey: 45.3 s over 8,193 timed transfers, 9,011 of 10,000 verified.](evidence/stress-metrics-2026-10-05/merchant-timing.svg)](evidence/stress-metrics-2026-10-05/merchant-timing.svg)
+
+*Figure 11. Each bar is finality p95 for one case. The label also gives verified receipts out of transfers sent. The grey bar is the failed case, and it shows only the 8,193 transfers that we timed.*
+
+All five passing cases verified every transfer. The largest, 20,000 at once on a bigger pool, settled 95% of transfers in 91 seconds. That is close to the 94 seconds for 20,000 claims (Figure 4), which makes sense: each merchant transfer is a claim.
+
+Now the case that failed. We sent 10,000 transfers at once on the default pool. The pool rejected 989 immediately, and we lost the watch on 818 more. The run's own audit verified 8,193 receipts.
 
 On 7 October 2026 we reconciled the 818 lost watches from saved blocks. All 818 were in canonical, finalized blocks, with success and the `Coinage.CoinTransferred` event. None of the 989 rejected transfers is in a saved block. So the total is 8,193 + 818 = **9,011 verified receipts**, which matches the 9,011 correct coin states.
 
@@ -221,7 +339,7 @@ This case **stays failed**. Reconciliation adds receipts, not timing samples, so
 
 > Same pattern, new flow: one 10,000 burst on the default pool fell short. **Waves and a bigger pool both completed it.**
 
-The appendix has the [full merchant measurements](coinage-stress-metrics-appendix.md#merchant-fan-in-measurements), with launch windows and job links. As with the other flows, each row is a separate setup. Don't read the p95 column as a trend.
+The appendix has the [full merchant measurements](coinage-stress-metrics-appendix.md#merchant-fan-in-measurements), with p50, p95 and max, launch windows and job links. As with the other flows, each bar is a separate setup. Don't read Figure 11 as a trend.
 
 ### Free-quota and offboarding: first unload cases (preliminary)
 
@@ -317,7 +435,8 @@ Exact hashes, runtime limits and settings are in the download. Earlier run setti
 ### Evidence and downloads
 
 - **Data:** [metrics.json](evidence/stress-metrics-2026-10-05/metrics.json) and its [checksum](evidence/stress-metrics-2026-10-05/SHA256SUMS.txt). The file has the selected measurements, source files and hashes, run attempts, runtime and binary details, and the sampled time series. Time fields are in seconds. Fields that we converted from milliseconds end in `Seconds`.
-- **Charts:** [make_charts.py](evidence/stress-metrics-2026-10-05/make_charts.py) draws every figure from `metrics.json`.
+- **Charts:** [make_charts.py](evidence/stress-metrics-2026-10-05/make_charts.py) draws every figure from `metrics.json`, the host resource data and the saved merchant summaries.
+- **Machine resources:** [host-resources.json](evidence/host-resources-2026-10-07/host-resources.json), its [extraction script](evidence/host-resources-2026-10-07/extract_host_resources.py) and [checksum](evidence/host-resources-2026-10-07/SHA256SUMS.txt). They come from the saved `/proc/stat`, `/proc/meminfo` and process lists of the three large claim runs.
 - **Raw archives:** these small files are not the full raw receipt archives. GitHub artifacts expire after 30 days. We keep the raw archives locally, but they are not public.
 - **Lifecycle audit:** done on **3 October 2026 UTC**. Artifact IDs, archive digests and expiry dates are in the [manifest](evidence/lifecycle-2026-10-03/manifest.json). Original attempts and job links are in the [pinned audited report](https://github.com/paritytech/technical-design/blob/e26a47902fa1cbc1a9dd5dca80d1dc5a2657a508/designs/individuality/non-fun-tests/test-design/lifecycle-campaign-results.md).
 - **Commits and verification sources:** see the [lifecycle evidence references](coinage-stress-metrics-appendix.md#lifecycle-evidence-references) and [claim evidence references](coinage-stress-metrics-appendix.md#claim-evidence-references).

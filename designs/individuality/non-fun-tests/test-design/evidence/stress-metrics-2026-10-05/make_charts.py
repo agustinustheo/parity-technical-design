@@ -389,7 +389,193 @@ def completion():
     save(fig, "lifecycle-completion.svg")
 
 
+def linear_fit(xs, ys):
+    mx, my = sum(xs) / len(xs), sum(ys) / len(ys)
+    slope = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / sum((x - mx) ** 2 for x in xs)
+    return my - slope * mx, slope
+
+
+# Machine load during the 100,000-claim run (host-resources-2026-10-07).
+def machine_resources():
+    host_data = json.loads((HERE.parent / "host-resources-2026-10-07" / "host-resources.json").read_text())
+    run = host_data["runs"]["100,000 claims"]
+    prep, settled = run["fixturePreparationSeconds"], run["lastReceiptSeconds"]
+    host, procs = run["host"], run["processRssGiB"]
+    start = run["networkStartSeconds"] / 60
+    fig, (cpu, mem) = plt.subplots(2, 1, figsize=(8.6, 7.4), sharex=True)
+    for ax in (cpu, mem):
+        ax.axvspan(-prep / 60, 0, color=GRID, alpha=0.45, linewidth=0)
+        ax.axvspan(0, settled / 60, color=ORANGE, alpha=0.12, linewidth=0)
+        ax.grid(axis="y", color=GRID, linewidth=0.8)
+        ax.set_axisbelow(True)
+    t = [h["t"] / 60 for h in host]
+    cpu.plot(t, [h["maxCore"] for h in host], color=AXIS, linewidth=1, label="Busiest single CPU")
+    cpu.plot(t, [h["busy"] for h in host], color=BLUE, linewidth=2, label="Whole machine (32 CPUs)")
+    cpu.set_ylim(0, 105)
+    cpu.set_ylabel("CPU busy (%)")
+    cpu.set_title("CPU: the whole machine stayed below 22% busy")
+
+    def phase(a, b, key):
+        values = [h[key] for h in host if a <= h["t"] <= b]
+        return sum(values) / len(values), max(values)
+
+    idle = phase(run["networkStartSeconds"] + 60, -prep - 30, "busy")
+    burst = phase(0, settled, "busy")
+    cpu.text(start + 1, 30, f"Network idle:\naverage {idle[0]:.0f}%", fontsize=9, color=INK_2)
+    cpu.text(-prep / 60 + 1, 30, "Fixture preparation", fontsize=9, color=INK_2)
+    cpu.annotate(f"Burst: average {burst[0]:.0f}%,\npeak {burst[1]:.0f}%", (settled / 60, burst[1]), xytext=(8, 10),
+                 textcoords="offset points", fontsize=9, color=INK)
+    cpu.legend(loc="upper left", bbox_to_anchor=(0.0, 1.0), frameon=False, fontsize=9, ncol=2)
+
+    tm = [h["t"] / 60 for h in host]
+    mem.plot(tm, [h["usedGiB"] for h in host], color=BLUE, linewidth=2, label="Whole machine, used")
+    series = [("Collator-1502", ORANGE, "People collator 1"), ("Collator-1502-2", "#1baf7a", "People collator 2"), ("driver", INK_2, "Load generator")]
+    for key, colour, name in series:
+        pts = [(p["t"] / 60, p[key]) for p in procs if key in p]
+        burst_peak = max(b for a, b in pts if 0 <= a * 60 <= settled)
+        mem.plot([a for a, _ in pts], [b for _, b in pts], color=colour, linewidth=2, label=f"{name} (burst peak {burst_peak:.1f} GiB)")
+    used = [h for h in host if h["t"] <= -prep - 30 and h["t"] >= run["networkStartSeconds"] + 60]
+    peak_used = max(host, key=lambda h: h["usedGiB"])
+    mem.annotate(f"{peak_used['usedGiB']:.1f} GiB of 62.8", (peak_used["t"] / 60, peak_used["usedGiB"]), xytext=(4, 4),
+                 textcoords="offset points", fontsize=9, color=INK)
+    mem.text(start + 1, sum(h["usedGiB"] for h in used) / len(used) + 1, f"idle: {sum(h['usedGiB'] for h in used) / len(used):.0f} GiB",
+             fontsize=9, color=INK_2)
+    mem.set_ylim(0, 24)
+    mem.set_ylabel("Memory (GiB)")
+    mem.set_title("Memory: the load generator used about as much as a collator")
+    mem.set_xlabel("Minutes from the first claim (0 = burst start; orange band = burst; grey band = fixture preparation)")
+    mem.set_xlim(start, (settled + 420) / 60)
+    mem.legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=2, frameon=False, fontsize=9)
+    fig.tight_layout()
+    save(fig, "machine-resources.svg")
+
+
+# Top-up p95 against the largest batch that entered the pool at once.
+def topup_trend():
+    earlier = DATA["earlierPublishedResults"]["topups"]
+    recon = {t["run"]: t for t in DATA["topupReconciliation"]}
+    r1, r2, r3 = recon[36537079387], recon[36619415692], recon[36662212241]
+    points = [
+        ("1,000 at once", 1000, earlier[0]["finalityP95Seconds"], earlier[0]["readinessP95Seconds"], True),
+        ("7,000 + 3,000", 7000, earlier[1]["finalityP95Seconds"], earlier[1]["readinessP95Seconds"], True),
+        ("8,400 + 1,600", 8400, r3["originalFinalitySeconds"]["p95"], r3["originalReadinessSeconds"]["p95"], True),
+        ("8,500 + 1,500 (failed)", 8500, r2["originalFinalitySeconds"]["p95"], None, False),
+        ("10,000 at once, default (failed; 9,011 entered)", 9011, r1["originalFinalitySeconds"]["p95"], r1["originalReadinessSeconds"]["p95"], False),
+        ("10,000 at once, bigger pool", 10000, earlier[2]["finalityP95Seconds"], earlier[2]["readinessP95Seconds"], True),
+    ]
+    passing = [p for p in points if p[4]]
+    fig, ax = plt.subplots(figsize=(8.6, 5.2))
+    for idx, colour, name in [(2, BLUE, "Finality p95"), (3, ORANGE, "Readiness p95")]:
+        a, b = linear_fit([p[1] for p in passing], [p[idx] for p in passing])
+        ax.plot([0, 10500], [a, a + b * 10500], color=colour, linewidth=1, linestyle=(0, (4, 3)), alpha=0.8)
+        ax.text(10600, a + b * 10500, f"+{b * 1000:.0f} s per\n1,000 top-ups", va="center", fontsize=9, color=colour)
+        for p in points:
+            if p[idx] is None:
+                continue
+            filled = p[4]
+            ax.scatter([p[1]], [p[idx]], s=60, zorder=3, color=colour if filled else SURFACE, edgecolor=colour, linewidth=2)
+        base = points[0][idx]
+        for p in passing:
+            text = f"{p[idx]:.0f} s" if p[1] == 1000 else f"{p[idx]:.0f} s (+{100 * (p[idx] / base - 1):.0f}%)"
+            if idx == 3:
+                ax.annotate(text, (p[1], p[idx]), xytext=(-8, 6), textcoords="offset points", ha="right", fontsize=9, color=INK)
+            else:
+                ax.annotate(text, (p[1], p[idx]), xytext=(8, -14), textcoords="offset points", ha="left", fontsize=9, color=INK)
+        ax.plot([], [], color=colour, marker="o", linestyle="", label=name)
+    ax.scatter([], [], s=60, color=SURFACE, edgecolor=MUTED, linewidth=2, label="Failed run (not used for the line)")
+    for p in points:
+        if not p[4]:
+            ax.annotate("failed", (p[1], p[2]), xytext=(0, 9), textcoords="offset points", ha="center", fontsize=8, color=MUTED)
+    ax.set_xlim(0, 12300)
+    ax.set_ylim(0, 400)
+    ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, _: f"{x:,.0f}"))
+    ax.set_xticks([0, 2000, 4000, 6000, 8000, 10000])
+    ax.grid(axis="y", color=GRID, linewidth=0.8)
+    ax.set_axisbelow(True)
+    ax.set_xlabel("Top-ups that entered the pool in the largest single batch")
+    ax.set_ylabel("Seconds (p95)")
+    ax.set_title("Top-ups: time grows in a straight line with batch size")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=3, frameon=False, fontsize=9)
+    save(fig, "topup-trend.svg")
+
+
+# Recycling p95 as the burst doubles.
+def recycling_growth():
+    cases = [("b_pool", 10000), ("b20000", 20000), ("b40000", 40000)]
+    rows = []
+    for case, actors in cases:
+        m = lifecycle(case)["measurements"]
+        rows.append((actors, m["waves"][0]["finalitySeconds"]["p95"], m["readinessSeconds"]["p95"]))
+    fig, ax = plt.subplots(figsize=(8.6, 4.6))
+    for idx, colour, name in [(1, BLUE, "Finality p95"), (2, ORANGE, "Readiness p95")]:
+        xs, ys = [r[0] for r in rows], [r[idx] for r in rows]
+        ax.plot(xs, ys, color=colour, linewidth=2, marker="o", markersize=7, label=name)
+        for x, y in zip(xs, ys):
+            ax.annotate(f"{y:,.0f} s", (x, y), xytext=(8, -4 if idx == 1 else 6), textcoords="offset points", fontsize=9, color=INK)
+        for (x0, y0), (x1, y1) in zip(zip(xs, ys), list(zip(xs, ys))[1:]):
+            ax.annotate(f"+{y1 - y0:,.0f} s", ((x0 * x1) ** 0.5, (y0 + y1) / 2), xytext=(-10, 10) if idx == 2 else (12, -16),
+                        textcoords="offset points", ha="right" if idx == 2 else "left", fontsize=9, color=colour, fontweight="bold")
+    ax.set_xscale("log", base=2)
+    ax.set_xticks([10000, 20000, 40000], ["10,000", "20,000", "40,000"])
+    ax.minorticks_off()
+    ax.set_xlim(8000, 52000)
+    ax.set_ylim(0, 1700)
+    ax.grid(axis="y", color=GRID, linewidth=0.8)
+    ax.set_axisbelow(True)
+    ax.set_xlabel("Recycling actors in one burst, bigger pool (each step doubles)")
+    ax.set_ylabel("Seconds (p95)")
+    ax.set_title("Recycling: each doubling added about 400–700 seconds")
+    ax.legend(loc="upper left", frameon=False, fontsize=9)
+    save(fig, "recycling-growth.svg")
+
+
+# Merchant fan-in finality p95 (remaining-flow-2026-10-07).
+def merchant_timing():
+    root = HERE.parent / "remaining-flow-2026-10-07" / "merchant"
+    cases = [
+        ("100-burst-default", "100 at once\ndefault pool"),
+        ("1000-burst-default", "1,000 at once\ndefault pool"),
+        ("10000-paced-default", "8,000 + 2,000 in waves\ndefault pool"),
+        ("10000-burst-enlarged", "10,000 at once\nbigger pool (11,000)"),
+        ("20000-burst-enlarged", "20,000 at once\nbigger pool (22,000)"),
+        ("10000-burst-default", "FAILED: 10,000 at once\ndefault pool"),
+    ]
+    fig, ax = plt.subplots(figsize=(8.6, 4.8))
+    for i, (case, label) in enumerate(cases):
+        summary = json.loads((root / case / "claim-burst-summary.json").read_text())
+        p95 = summary["finalityMs"]["p95"] / 1000
+        timed = summary["finalityMs"]["count"]
+        sent = summary["sent"]
+        verified = summary["verified"]
+        failed = not summary["passed"]
+        ax.barh(i, p95, height=0.6, color=GREY if failed else BLUE, hatch="////" if failed else None, edgecolor=SURFACE, linewidth=0)
+        text = f"{p95:.1f} s  ·  {verified:,} of {sent:,} verified"
+        if failed:
+            text += f"  ({timed:,} timed)"
+        label_bar(ax, i, p95, text, 140, INK_2 if failed else INK)
+    ax.set_yticks(range(len(cases)), [c[1] for c in cases])
+    style_hbar(ax, 140)
+    ax.set_xlabel("Seconds for 95% of transfers to settle (finality p95). Shorter is better.")
+    ax.set_title("Merchant fan-in: time to settle each burst")
+    ax.legend(
+        handles=[
+            Patch(color=BLUE, label="Finality p95, passed"),
+            Patch(facecolor=GREY, hatch="////", edgecolor=SURFACE, label="Failed run (timed part only)"),
+        ],
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.14),
+        ncol=2,
+        frameon=False,
+        fontsize=9,
+    )
+    save(fig, "merchant-timing.svg")
+
+
 if __name__ == "__main__":
+    merchant_timing()
+    machine_resources()
+    topup_trend()
+    recycling_growth()
     topup_timing()
     recycling_timing()
     claim_finality()
