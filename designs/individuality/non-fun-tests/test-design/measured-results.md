@@ -1,8 +1,10 @@
 # Coinage stress-test findings
 
-We verified a burst of **100,000 claims**. These experiments establish completed burst sizes, not the server’s physical maximum or sustainable production throughput.
+We verified a burst of **150,000 claims**, including a local re-audit of its saved receipts and final coin states. These experiments establish completed burst sizes, not the server’s physical maximum or sustainable production throughput.
 
 Pacing and larger pool settings both produced successful 10,000-top-up runs. Later reconciliation verified all 88 dropped-watch transactions from the two incomplete runs. Those runs remain failed as 10,000-top-up experiments: one had 989 admission rejections, and the other never submitted its final 1,500 transactions.
+
+Merchant fan-in later verified up to **20,000 transfers to one merchant**; its default-pool 10,000 burst failed in the same way. The first free-quota and offboarding cases each verified 100 unloads and are preliminary.
 
 ## Consolidated stress metrics — 5 October 2026
 
@@ -198,17 +200,19 @@ Full evidence is preserved locally under `coinage-evidence/claims-capacity-2026-
 
 ## Claim generator memory retention — 2 October 2026
 
-The million-claim attempt exposed a **load-generator memory limit**. The memory fix then passed a verified 1,000-claim validation. These observations do not establish the chain's maximum capacity. “Claims” means one signed transfer per root-seeded source coin, not real app users or the full payment lifecycle. The smoke claim is separate and excluded.
+The million-claim attempt exposed a **load-generator memory limit**. The memory fix then passed a verified 1,000-claim validation and a successful 150,000-claim workload. These observations do not establish the chain's maximum capacity. “Claims” means one signed transfer per root-seeded source coin, not real app users or the full payment lifecycle. The smoke claim is separate and excluded.
 
 | Experiment / run | Outcome | Requested | Submitted | Watch-finalized | Receipt-verified |
 | --- | --- | ---: | --- | --- | --- |
 | [Million-claim attempt][retention-million] | **Generator heap exhausted** | 1,000,000 | Not established | Not established | No complete audit |
 | [Memory-fix validation][retention-validation] | **PASS** | 1,000 | 1,000 | 1,000 | 1,000 |
-| [250,000-claim experiment][retention-250k] | **RUNNING — results pending** | 250,000 | Pending evidence | Pending evidence | Pending evidence |
+| [150,000-claim burst][retention-150k] | **PASS — CI and local re-audit** | 150,000 | 150,000 | 150,000 | 150,000 (CI and local verifier) |
+| [250,000, attempt 3][retention-250k] | **Cancelled workflow; see attempt history** | 250,000 | 250,000 (CI summary) | 250,000 (CI summary) | 250,000 (CI verifier log; not locally re-audited) |
+| [500,000, attempt 4][retention-500k] | **Cancelled workflow; see attempt history** | 500,000 | 500,000 (CI summary) | 500,000 (CI summary) | 500,000 (CI verifier log; not locally re-audited) |
 
 **Million-claim attempt:** all claims were prepared, but the TypeScript driver exhausted its **24 GiB JavaScript heap**. The configured pool was **1,100,000 transactions / 262144 KiB**. Repeated broadcast notifications and decoded blocks were retained without bounds; no heap profile established their exact share of memory. No complete final receipt or state audit was produced. Recovery passed after the driver crashed. The submitted, successful and failed totals for the million requested claims remain unestablished.
 
-The [memory-retention fix][retention-fix] ([PR #38](https://github.com/paritytech/polkadot-pop-e2e/pull/38)) aggregates broadcast notifications into counters and timestamps, caps retained watch observations and decoded-block caching, and writes non-broadcast watch transitions and observed block evidence during execution. It releases completed watch traces and signed wire data. Receipt verification and final-state requirements remain in place, with no added pacing, automatic retries or relaxed success criteria. A local regression test processed **one million repeated notifications under a 128 MiB heap limit**. This was a synthetic notification test, not a million-transaction chain test.
+The [memory-retention fix][retention-fix] ([PR #38](https://github.com/paritytech/polkadot-pop-e2e/pull/38)) aggregates broadcast notifications into counters and timestamps, caps retained watch observations and decoded-block caching, and writes non-broadcast watch transitions and observed block evidence during execution. It releases completed watch traces and signed wire data. Discarded individual broadcast timestamps and peer lists were not used by the existing reports or receipt audits. Receipt verification and final-state requirements remain in place, with no added pacing, automatic retries or relaxed success criteria. A local regression test processed **one million repeated notifications under a 128 MiB heap limit**. This was a synthetic notification test, not a million-transaction chain test.
 
 ### Verified 1,000-claim validation
 
@@ -225,9 +229,35 @@ Finality measures each transaction's submission through client-observed finalize
 
 All **1,000** claims emitted client-observed pool-ready notifications. **Pool-ready notifications are not voucher readiness**; ring readiness is not applicable to these claim-only tests. Receipts were rechecked against raw extrinsic hashes, block indexes, `System.ExtrinsicSuccess`, expected `Coinage.CoinTransferred` events, and saved canonical/finality observations from both People nodes. These are consistency checks on saved RPC evidence, not cryptographic consensus proofs.
 
-### Pending 250,000-claim experiment
+### Successful 150,000-claim burst
 
-At **2026-10-01 17:37 UTC** (2 October locally), GitHub reported **in progress**, with no downloadable artifacts. Configuration only: **250,000 claims in one burst**, no pacing or retries; pool **275,000 transactions / 262144 KiB**; fixture batch **5,000**; client launch target **60 seconds**; watch deadline **60 minutes**. It uses the same [memory-fix commit][retention-fix] as the validation. Submitted, watch-finalized and receipt-verified counts, final state, memory measurements and recovery remain unavailable. Inspect those artifacts before assigning a result. A larger pool provides queue space; it does not establish higher chain execution capacity.
+[Run 36900802673][retention-150k] used the [memory-fix commit][retention-fix]: one burst, no pacing or automatic retries; pool **165,000 entries / 262144 KiB (256 MiB)**; fixture batch **5,000**; client launch target **60 seconds**; watch deadline **60 minutes**. Two People collators and the required relay validators shared one CI runner. The separate smoke claim is excluded.
+
+| Measurement | Seconds |
+| --- | ---: |
+| Client submission window | 6.662 |
+| Last watch receipt from burst start | 509.979 |
+| Per-claim finality p50 / p95 / max (all 150,000) | 275.769 / 489.735 / 507.262 |
+| Summary elapsed time | 649.976 |
+
+CI reported **150,000 requested, submitted and finalized watch outcomes**. Its saved-evidence verifier checked 150,000 unique transactions against raw block bodies, indexed successful dispatch events and the expected Coinage event. Final coin-state checks passed for all 150,000 actors with **zero mismatches**; backing stayed **300,001 raw asset units** before and after. Recovery and the overall workflow passed. A subsequent local re-audit of result artifact **11189200900** also passed: the pinned verifier checked all **150,000 unique receipts**, and all saved source/recipient states were rechecked with zero mismatches. Receipt event recipient, instance, value and age matched those states. This checks consistency of saved RPC evidence, not cryptographic consensus.
+
+Submission measures client launch, not node acceptance or throughput. Finality measures each claim's submission through finalized notification and receipt lookup. Summary elapsed time includes post-burst state checks but excludes fixture preparation, the subsequent aggregate receipt audit and recovery. These definitions follow the [measurement boundaries above](#verified-1000-claim-validation).
+
+Each claim transfers a root-seeded coin: it removes the source coin and creates its replacement, adding **no net live coin**. Setup bypasses issuance and the full wallet lifecycle. This successful workload is not “150,000 users”, a server maximum, weight validation, measured execution cost or PVF deadline verification. Pool enlargement changes backlog capacity, not block-weight limits. Workload size, pool settings and harness implementation changed across experiments, so these runs do not isolate a causal performance improvement.
+
+### Larger attempts — inconclusive failures; testing stopped
+
+GitHub now confirms both workflows **completed with conclusion cancelled**. Cancellation and force-cancellation had been requested, and the local deferred dispatcher was stopped. No additional tests were launched for this update.
+
+| Run | Pool entries / byte budget | Earlier attempts | Final attempt |
+| --- | --- | --- | --- |
+| [250,000][retention-250k] | 275,000 / 256 MiB | Attempts 1–2 lost runner communication during the combined preparation/submission step; no result artifacts from those attempts are available. | Attempt 3 cancelled; CI verifier and recovery steps passed; result artifact 11204043184 is now available. |
+| [500,000][retention-500k] | 550,000 / 256 MiB | Attempt 1 lost communication during dependency/client validation, before PreviewNet started; attempts 2–3 lost communication during the combined preparation/submission step. No result artifacts from those attempts are available. | Attempt 4 cancelled; CI verifier and recovery steps passed; result artifact 11204154579 and full artifact 11204891083 are now available. |
+
+**Later observations do not resolve the earlier disconnects.** Final-attempt logs report the submitted/watch-finalized/CI-verified totals shown above, zero coin-state mismatches and unchanged fixture backing. These are CI reports, not a local re-audit of the larger artifacts, and the cancelled workflows are not labelled full-run passes. Their attempt histories remain separate from the earlier failed attempts. A disconnect annotation cannot distinguish resource exhaustion, runner termination or infrastructure/network problems. Those failures are inconclusive: they do not establish OOM, pool failure, chain failure or a capacity limit. Testing has stopped; no chain maximum or production readiness has been established.
+
+See the site-relative [claim scenario](scenarios/claim-burst.md#measurements-and-limits) and [receipt methodology](#how-verification-works). The [small evidence report](evidence/claims-retention-2026-10-02/summary-provenance.json) and [checksum](evidence/claims-retention-2026-10-02/SHA256SUMS.txt) preserve selected summaries, provenance and attempt observations. They are not full raw artifacts. GitHub artifacts expire after 30 days; downloaded evidence is retained locally outside the repository.
 
 The validation evidence and checksum manifest are preserved locally under `coinage-evidence/claims-retention-2026-10-02/`; they are not public downloads. The recorded independent validation timestamp is **2026-10-01 17:18:52 UTC** (2 October locally). Original observations remain separate from later verification. See the existing [claim scenario][claim-spec] and [claim methodology][claim-capacity-guide] for workload and measurement boundaries.
 
@@ -312,6 +342,55 @@ The final audit records **24 raw archives preserved locally with hashes checked*
 
 Saved local RPC observations are not independent cryptographic consensus proofs. The campaign establishes neither a production capacity ceiling nor unlimited scalability, measured runtime-weight accuracy, block execution wall time or PVF deadline compliance.
 
+## Remaining-flow burst tests — 6–7 October 2026
+
+**Merchant fan-in verified up to 20,000 transfers to one merchant.** Five of six cases passed. The default-pool burst of 10,000 failed, as earlier claim and top-up bursts did. The first free-quota and offboarding cases each verified **100 unloads**; both are preliminary single cases.
+
+### Merchant fan-in outcomes
+
+[Run 37510457575, attempt 1](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/attempts/1), test commit [`7373fe8c1def`](https://github.com/paritytech/polkadot-pop-e2e/commit/7373fe8c1def9c8a5ef6531859ac85a844945bd5). Each transfer is a claim into a fresh destination key of one merchant, from a fixture-prepared coin. It does not include chat delivery or the production wallet. Attempt 2 was queued automatically and cancelled before any job ran; it has no results.
+
+| Transfers / job | Pattern | Pool | Watch-finalized | Receipt-verified | State-verified | Finality p50 / p95 / max (N) | Result |
+| --- | --- | --- | ---: | --- | ---: | --- | --- |
+| [100](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112480491326) | Burst | Default | 100 | 100 | 100 | 35.72 / 35.72 / 35.73 s (100) | **PASS** |
+| [1,000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112487225834) | Burst | Default | 1,000 | 1,000 | 1,000 | 30.42 / 30.45 / 30.45 s (1,000) | **PASS** |
+| [10,000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112493393120) | Burst | Default | 8,193 | 8,193 original + 818 reconciled = 9,011 | 9,011 | 41.25 / 45.31 / 45.35 s (8,193) | **FAIL** — completion target |
+| [10,000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112500858287) | Waves 8,000 + 2,000 | Default | 10,000 | 10,000 | 10,000 | 45.46 / 57.26 / 57.27 s (10,000) | **PASS** |
+| [10,000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112509307852) | Burst | Enlarged: 11,000 entries / 256 MiB | 10,000 | 10,000 | 10,000 | 49.47 / 61.18 / 61.21 s (10,000) | **PASS** |
+| [20,000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112517391792) | Burst | Enlarged: 22,000 entries / 256 MiB | 20,000 | 20,000 | 20,000 | 59.15 / 91.16 / 91.38 s (20,000) | **PASS** |
+
+Client launch windows were 0.006, 0.080, 0.543, 0.442 + 0.116 (paced), 0.474 and 0.950 s. They measure the client, not chain throughput. The [one-transfer smoke](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112430856228) passed. The five passing cases were rechecked locally with `verify-remaining-flow.py`.
+
+**Default-pool 10,000 reconciliation.** All 10,000 transfers were sent. 989 were rejected immediately at pool entry (`1016`, pool limit) and 818 watches were dropped. The run's receipt audit verified 8,193. On **7 October 2026** all 818 dropped watches were reconciled offline: each was in a saved, canonical, finalized block (173195–173198, both People nodes' views), with a matching extrinsic hash, `System.ExtrinsicSuccess` and `Coinage.CoinTransferred`. None of the 989 rejected transactions appears in a saved block. Receipt-verified is therefore 8,193 + 818 = **9,011**, equal to the state-check count. Reconciliation adds receipts, not timing samples, so finality stays on N = 8,193. The case **remains failed** as a 10,000-transfer experiment and was not rerun.
+
+Pacing and an enlarged pool each completed the tested merchant bursts; a single 10,000 burst on the default pool did not. This matches the earlier claim and top-up pattern. These separate runs do not establish a latency trend, sustainable throughput or production capacity.
+
+### Free-quota exhaustion and offboarding — preliminary
+
+Both runs used test commit [`37b02ba65a52`](https://github.com/paritytech/polkadot-pop-e2e/commit/37b02ba65a52370e64c91b6809e1f2258ce48d55) on the default pool. Receipts were re-verified offline from saved raw blocks with `verify-remaining-flow.py` on 7 October 2026.
+
+| Case / run | People / unloads | Setup top-ups | Receipt-verified | Finality p50 / p95 / max (N) | Result |
+| --- | --- | --- | ---: | --- | --- |
+| [Free quota, 100](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37570768389/attempts/1) | 1 / 100 | 100 / 100 finalized | 100 | 43.08 / 55.02 / 55.02 s (100) | **PASS** — preliminary |
+| [Offboarding, 100](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37590878841/attempts/1) | 100 / 100 | 100 / 100 finalized | 100 | 49.16 / 61.12 / 61.12 s (100) | **PASS** — preliminary |
+
+- **One person, 100 transactions.** The quota allowance limit was 1,000, so all 100 quota requests came from one person. This is not 100 users.
+- **Negative probes.** Reusing a consumed token was rejected with custom error 57 (`UnloadTokenAlreadyConsumed`). A counter at the limit was rejected with custom error 58 (`UnloadTokenCounterOutOfRange`).
+- **Proof generation, first measurement.** Each unload needs two ring-VRF proofs, one for the recycler alias and one for the free token: 200 proofs per case. Recycler proofs took 1.406 s at p50 and 1.455 s at most in the quota case (1.411 / 1.479 s for offboarding). Free-token proofs took 0.786 / 0.835 s (0.827 / 0.880 s). Proofs were generated before release, so this is client preparation cost, not submission-to-receipt time.
+- **Limits.** Real period rollover was not exercised. Policy rows come from a separate model, not native iOS or Android code. The other five quota and five offboarding profiles have not run yet, so there is no quota-exhaustion or offboarding conclusion.
+
+### Setup failures, now fixed
+
+| Scenario | What happened | What it establishes |
+| --- | --- | --- |
+| Free-quota exhaustion | First campaign: [smoke](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112436114495) passed; all six measured cases ([100](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112526429833), [1,000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112532845219), [10,000 burst](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112539289683), [10,000 paced](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112545534951), [10,000 enlarged](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112551090694), [20,000 enlarged](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112556615978)) stopped during fixture top-ups. The 100-request case has since passed independently. | Five profiles still to run; no burst-capacity conclusion yet |
+| Offboarding | Same setup failure; [smoke](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112440932803) passed. Measured cases: [100](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112561845169), [1,000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112567282589), [10,000 burst](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112572580926), [10,000 paced](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112577483596), [10,000 enlarged](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112582692332), [20,000 enlarged](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112587829742). The 100-person case has since passed independently. | Five profiles still to run; no burst-capacity conclusion yet |
+| Full flow | [Smoke](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37510457575/job/112446686310) failed while preparing the network: GitHub reports the self-hosted runner lost communication. Six cases skipped. | No measured workload result; cause of the runner loss not established |
+
+The test client sent setup top-ups through a path the node allows only 16 at a time per connection. Above that, the extra transactions were silently never sent, so only 16 of 100 setup top-ups reached the pool. This was a test-harness bug, not a chain result. The [fix](https://github.com/paritytech/polkadot-pop-e2e/commit/e9c982bb296a344d8c6629dcc8a82971c107438e) sends setup through the same submission path as the workload. A sustained-load test is in development and is not yet reportable.
+
+Download the [case ledger](evidence/remaining-flow-2026-10-07/case-ledger-remaining-flow.json), the [merchant reconciliation](evidence/remaining-flow-2026-10-07/merchant/10000-burst-default/claim-burst-reconciliation.json) and the other selected summaries listed in the [checksum file](evidence/remaining-flow-2026-10-07/SHA256SUMS.txt). The [detailed report](coinage-stress-metrics.md#merchant-fan-in-many-payments-to-one-merchant) and [appendix](coinage-stress-metrics-appendix.md#merchant-fan-in-measurements) give the full field split. These are selected files, not full raw artifacts.
+
 ## How verification works
 
 Each verified receipt matches a transaction hash to raw extrinsic bytes, its block and index, `System.ExtrinsicSuccess`, and the expected Coinage event. The reconciled top-up receipts also match the event’s actor, instance, denomination and amount to the fixture. Both local People nodes report the block as canonical and finalized. Separate state checks verify actor debits, held backing and voucher inclusion in built roots for top-ups, or source and recipient coin state for claims. These are trusted local-node observations, not independent cryptographic consensus proofs.
@@ -348,7 +427,9 @@ Saved evidence reconciled on **2026-09-30 at approximately 09:51 UTC**; no tests
 | [36840043405][capacity-100000] | [`b7451cd74bbe`](https://github.com/paritytech/polkadot-pop-e2e/commit/b7451cd74bbe71799ab9bc8e01a69696ab043217) | Claims; verified 2026-10-01 UTC: 100,000 receipts and matching states; unchanged fixture backing, recovery passed. Full artifact: 11154045167. |
 | [36859278723][retention-million] | [`6c6ce86ad0da`](https://github.com/paritytech/polkadot-pop-e2e/commit/6c6ce86ad0dab94ea45a2bd9a589f459d168c92d) | Generator heap exhaustion after preparing 1,000,000 claims; no complete receipt/state audit; recovery passed. |
 | [36895937059][retention-validation] | [`932677d50e07`][retention-fix] | 1,000 successful receipts; all final coin states rechecked without mismatches; unchanged fixture backing; recovery passed. |
-| [36898423397][retention-250k] | [`932677d50e07`][retention-fix] | Running at this update; configuration recorded, results pending evidence. |
+| [36900802673][retention-150k] | [`932677d50e07`][retention-fix] | 150,000 CI-verified receipts and matching coin states; unchanged backing and recovery passed. Result artifact: 11189200900. Local receipt/state re-audit passed; see the evidence report for its timestamp. |
+| [36898423397][retention-250k] | [`932677d50e07`][retention-fix] | Attempts 1–2 inconclusive runner disconnects; attempt 3 cancelled, with later CI verifier/recovery success and result artifact 11204043184. Not locally re-audited. |
+| [36902568601][retention-500k] | [`932677d50e07`][retention-fix] | Attempts 1–3 inconclusive runner disconnects; attempt 4 cancelled, with later CI verifier/recovery success and result artifact 11204154579. Not locally re-audited. |
 
 Claim evidence is retained locally in `coinage-evidence/claims-10000-36705343718/` and `coinage-evidence/claims-comparison-2026-09-30/`, including `experiments.json`, verification outputs, exact test code and SHA-256 manifests. The comparison directory contains full artifacts for both successful runs. These local copies survive GitHub artifact expiry; they are not website downloads.
 
@@ -385,3 +466,6 @@ GitHub artifacts expire after **30 days**, on **October 29–30** for these runs
 [retention-250k]: https://github.com/paritytech/polkadot-pop-e2e/actions/runs/36898423397
 [retention-fix]: https://github.com/paritytech/polkadot-pop-e2e/commit/932677d50e07052e62d45356a334801dc4630270
 [retention-driver]: https://github.com/paritytech/polkadot-pop-e2e/blob/932677d50e07052e62d45356a334801dc4630270/packages/chain-tests/scripts/coinage-claim-burst.ts
+
+[retention-150k]: https://github.com/paritytech/polkadot-pop-e2e/actions/runs/36900802673
+[retention-500k]: https://github.com/paritytech/polkadot-pop-e2e/actions/runs/36902568601

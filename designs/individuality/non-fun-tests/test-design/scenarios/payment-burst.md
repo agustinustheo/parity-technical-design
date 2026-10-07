@@ -15,7 +15,14 @@ Many actors pay at the same time. This loads the send and claim flows together, 
 | **Response** | Sender preparation lands, memos are delivered and every paid coin is claimed. |
 | **Response measure** | Time from payment intent to finalised claim of every coin; partial payments; dropped transactions. |
 
-**First implementation:** [Claim burst](claim-burst.md) isolates the recipient transfer step using predefined coins. The split-and-claim pilot below adds sender preparation. Voucher unload preparation remains a later case.
+**Coverage so far:** [Claim burst](claim-burst.md) isolates the recipient transfer step using predefined coins. The split-and-claim pilot below adds sender preparation, and its campaign has run. The scenario is complete only when all three plan types have run and a mixed run measures payment intent to finalised claim:
+
+| Plan type | Sender chain call | Pilot | Status |
+| --------- | ----------------- | ----- | ------ |
+| Exact coins | None | [Exact-coin plan](#exact-coin-plan) | Chain path covered by claim burst |
+| Split | `split` | [Split and claim](#next-pilot-split-and-claim) | Run in the lifecycle campaign |
+| Unload | `unload_recycler_into_coins` | [Voucher unload and claim](#next-pilot-voucher-unload-and-claim) | Not run |
+| Mix of all three | Selected by the wallet policy | [Payment mix](#payment-mix) | Not run |
 
 **Still to decide:** scale, budgets and the actor profiles, which follow the [profile schema](../profile-schema.md). These wait on the [open questions](../../README.md#open-questions).
 
@@ -89,3 +96,48 @@ Each case has fresh fixture state. Preserve a failed case and continue the seque
 Implementation: [campaign workflow](https://github.com/paritytech/polkadot-pop-e2e/blob/feat/th-coinage-lifecycle-pilots/.github/workflows/coinage-lifecycle-campaign.yml), [driver and evidence guide](https://github.com/paritytech/polkadot-pop-e2e/blob/feat/th-coinage-lifecycle-pilots/ci/previewnet/lifecycle-pilots.md).
 
 Observed outcomes: [lifecycle campaign results](../lifecycle-campaign-results.md). This records original attempts, reruns and evidence limits separately.
+
+## Exact-coin plan
+
+An exact-coin payment has no sender-side chain call. The sender hands whole coins to the recipient, and the recipient claims each one with `transfer`. On chain this is the claim burst's workload, so no separate exact-coin pilot is needed. What claim burst does not cover is the wallet deciding that an exact cover exists; that decision is exercised in the [payment mix](#payment-mix).
+
+## Next pilot: voucher unload and claim
+
+**Question:** Can many payers create payment coins from vouchers at once, and can recipients claim them? This adds the third sender path. It is the first pilot to submit an unload, so it also measures proof generation.
+
+| Setting | Pilot |
+| ------- | ----- |
+| Network | Same as the split pilot, plus people from the [shared unload fixture](../unload-fixture.md). |
+| Load | One-payer smoke, then 100, 1,000 and 10,000 payers on the default pool. Larger sizes follow the [sequential campaign](#sequential-campaign) pool table only after 10,000 passes. |
+| Inventory | One exponent-`2` voucher per payer in a built ring of one sufficient instance; one free token per payer; three fresh keys per payer: payment output, change and recipient. |
+| Plan | Unload the voucher into two exponent-`1` coins: the payment output and the change. Claim the payment output into the recipient. |
+| Calls | N `unload_recycler_into_coins` calls with one alias each, `split_into = [(1, [payment, change])]` and `max_fee = 0` under `AsUnloadTokenPeople` ([call][unload-into-coins]). Then N `transfer` calls under `AsCoin`. |
+| Timing | Same launch targets and observation deadlines as the split pilot. Proofs are generated before release. No automatic retries. |
+
+Use a barrier between the two waves, as in the split pilot: all unloads verified before the claim wave. The barrier is a pilot control, not app behaviour.
+
+**Required evidence and checks:**
+
+- Everything in the fixture's [checks for every unload](../unload-fixture.md#checks-for-every-unload), with `Coinage.RecyclerUnloadedIntoCoins` as the call event and `output_count = 2`.
+- Before claims, both outputs exist in the right instance with exponent `1` and age `1`. Unloaded coins start at age 1.
+- After claims, the payment output is absent, the recipient holds exponent `1` at age `2` and the change coin is untouched.
+- Value conservation per payer: `2^2 = 2^1 + 2^1`. Instance backing is unchanged, because the value stays inside Coinage.
+- Proof generation results from the fixture, per payer and in total.
+- Publish payer count, unload count and claim count separately. An unload with an unresolved claim is an incomplete payment.
+
+Stop on a wrong state, unresolved receipt, node failure or a 60-second finality stall. A missed launch target is generator-limited. Observe continued finality and both collators after the pilot.
+
+## Payment mix
+
+**Question:** With a real wallet policy choosing the plan, how long does a payment take from intent to the recipient's last finalised claim?
+
+This run uses the wallet module's planner (C2) for one selected platform, because Android and iOS differ in split-coin and voucher selection ([payment construction](../../coinage/production-policies.md#payment-construction)). Give each payer an inventory that leads that policy to one known plan type. Use a controlled mix, such as one third exact, one third split and one third unload. Check before release that the planner produces the intended plan for every payer.
+
+- Deliver memos through a controlled in-process transport, with no barrier between sender preparation and claim. Recipients start their claim pass when the memo arrives and claim the coins already visible, as the apps do.
+- Measure per payment: intent to memo handoff, intent to sender preparation finality and intent to last finalised claim. Report each plan type separately and together.
+- Count partial payments: some coins claimed and some not by the deadline.
+- Count dropped or rejected transactions by plan type and by reason.
+
+The mix is a performance run at a stated size. Its stress variant ramps the number of simultaneous payments with the same mix until a response measure fails.
+
+[unload-into-coins]: https://github.com/paritytech/individuality-community/blob/fce93ef38a15c673a8b0b208362bc46ae755c7d7/pallets/coinage/src/lib.rs#L3540-L3552
