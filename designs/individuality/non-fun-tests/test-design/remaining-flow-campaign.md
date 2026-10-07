@@ -4,7 +4,9 @@ This campaign runs the four remaining scenarios with fixed, auditable plans. It 
 
 ## Run order
 
-Run one disposable PreviewNet at a time. Each case has six relay validators, two People collators and no synthetic delay. Run a one-actor smoke before each measured case. Finish all six cases for merchant fan-in, then free-quota exhaustion, offboarding and full-flow. Preserve a failed case and continue independent cases; fix setup failures before calling them workload attempts.
+Each scenario and profile is its own workflow run ([`coinage-burst-case.yml`](https://github.com/paritytech/polkadot-pop-e2e/blob/feat/th-coinage-unload-campaign/.github/workflows/coinage-burst-case.yml)), with its own URL, logs, conclusion and artifacts. A failed case is retried alone. Run one disposable PreviewNet at a time: six relay validators, two People collators and no synthetic delay. Each measured run starts with its own one-actor smoke stage. Order: merchant fan-in, then free-quota exhaustion, offboarding and full-flow.
+
+The [case queue](https://github.com/paritytech/polkadot-pop-e2e/blob/feat/th-coinage-unload-campaign/ci/previewnet/coinage-case-queue.py) dispatches one case, waits for it, records the run ID and conclusion in a ledger, then continues. It never retries on its own and resumes from the ledger. Preserve a failed case and continue independent cases; fix setup failures before calling them workload attempts.
 
 | Case per scenario | Actors | Release | Pool |
 | --- | ---: | --- | --- |
@@ -32,7 +34,9 @@ The offboarding fixture creates vouchers through real top-ups, including the Wra
 
 The first quota pilot exhausts complete person cohorts, leaves any final partial cohort explicitly identified, then probes a consumed counter and the current out-of-range counter. The real-period rollover and native-wallet policy variants remain separate from these 24 burst cases. Policy-model rows must never be presented as observed Android or iOS executions.
 
-A one-actor smoke gate for each scenario must pass before that scenario's six cases are released. The campaign runs sequentially, and independent cases continue after workload failures. These are new tests pending chain validation, not completed results.
+The standalone `smoke` profile validates a driver on its own. Cases run sequentially, and a failed case does not block the next.
+
+Setup top-ups use `author_submitAndWatchExtrinsic`, like the workload. PAPI's `submitAndWatch` uses `transaction_v1_broadcast`, which the node allows 16 times per connection; beyond that the transaction is silently never sent. Record every setup outcome. A setup failure is not a workload attempt.
 
 ## Evidence for recycling-unavailable handling
 

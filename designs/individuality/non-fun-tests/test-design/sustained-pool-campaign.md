@@ -21,7 +21,7 @@ Run each of the eight scenarios separately on the existing PreviewNet. Keep the 
 4. Record every sample and every submitted hash. Block inclusion causes dips; report time in the target band of 7,600–8,192, minimum, maximum, sample gaps and refill delay. Do not restart the clock after a dip. A completed timer alone does not prove the target load was maintained.
 5. Stop replenishment at the deadline. Drain and audit all submitted transactions. Observe finality and node recovery. Keep inventory exhaustion, proof-generation limits and node failures separate.
 
-All eight runs are sequential and follow the current burst campaign. A dependent call requires a successfully finalized prerequisite. Waiting for a ring or generating a proof must not be disguised as submitted load. If the driver cannot keep enough valid work available, report that limitation rather than calling the chain test successful.
+Each scenario has two independent runs of [`coinage-sustained-case.yml`](https://github.com/paritytech/polkadot-pop-e2e/blob/feat/th-coinage-sustained-pool/.github/workflows/coinage-sustained-case.yml): a smoke and the hold. Dispatch the hold only after that scenario's smoke passes. The case queue runs them one at a time, after the burst cases, and records every run. A dependent call requires a successfully finalized prerequisite. Waiting for a ring or generating a proof must not be disguised as submitted load. If the driver cannot keep enough valid work available, report that limitation rather than calling the chain test successful.
 
 ## Evidence
 
@@ -35,4 +35,4 @@ Stop admitting new work after the hold, drain submitted transactions, then finis
 
 For [recycling-unavailable handling](../coinage/policy-examples/recycling-unavailable-handling.md), retain allowance and token-consumption observations, rejected counters and the distinction between recycler loading and unloading. Native-wallet policy execution and real period rollover remain separate coverage claims.
 
-The implementation is on `feat/th-coinage-sustained-pool` in `polkadot-pop-e2e`. Chain validation is pending. This specification does not report completed runs.
+The implementation is on `feat/th-coinage-sustained-pool` in `polkadot-pop-e2e`. Pool limits stay at node defaults; the raised RPC subscription limit is a client-connection setting, not a pool change. This specification does not report completed runs.
