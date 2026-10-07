@@ -17,6 +17,15 @@ Many coins reach the forced recycling age at the same time. This loads the recyc
 
 **Still to decide:** scale, budgets and the actor profiles, which follow the [profile schema](../profile-schema.md). These wait on the [open questions](../../README.md#open-questions).
 
+**Coverage so far:** the coin-load pilot below has run. It covers concurrent loads and ring readiness, but not the full scenario:
+
+| Part of the scenario | Pilot | Status |
+| -------------------- | ----- | ------ |
+| Concurrent coin loads and ring readiness | [Coin loads into one recycler collection](#next-pilot-coin-loads-into-one-recycler-collection) | Run; the 100,000 case is incomplete |
+| Coins selected by age under a platform policy | [Forced-age selection and voucher use](#next-pilot-forced-age-selection-and-voucher-use) | Not run |
+| New vouchers usable | [Forced-age selection and voucher use](#next-pilot-forced-age-selection-and-voucher-use) | Not run |
+| Sponsored instance (`R6.pots`) | [Sponsored-instance variant](#sponsored-instance-variant) | Not run |
+
 ## Next pilot: coin loads into one recycler collection
 
 **Question:** Can concurrent coin loads complete and their members reach built rings, without lost value or stalled maintenance? Unlike independent claims, these calls share a denomination's recycler collection and cause Members work.
@@ -86,3 +95,44 @@ Each case has fresh fixture state. Preserve a failed case and continue the seque
 Implementation: [campaign workflow](https://github.com/paritytech/polkadot-pop-e2e/blob/feat/th-coinage-lifecycle-pilots/.github/workflows/coinage-lifecycle-campaign.yml), [driver and evidence guide](https://github.com/paritytech/polkadot-pop-e2e/blob/feat/th-coinage-lifecycle-pilots/ci/previewnet/lifecycle-pilots.md).
 
 Observed outcomes: [lifecycle campaign results](../lifecycle-campaign-results.md). Load receipts and observed ring readiness are separate results.
+
+## Next pilot: forced-age selection and voucher use
+
+**Question:** When many coins cross the forced-recycling age together, does the selected policy pick exactly those coins, do their loads complete, and can the new vouchers then be unloaded?
+
+The coin-load pilot loaded every fixture coin. This pilot puts the selection back. It seeds coin ages directly, because age counts operations rather than time, and reaching age 14 through real transfers would take 14 transactions per coin.
+
+| Setting | Pilot |
+| ------- | ----- |
+| Network | Same as the coin-load pilot, plus people from the [shared unload fixture](../unload-fixture.md) for the use stage. |
+| Load | One-actor smoke, then 1,000 and 10,000 actors on the default pool. Larger sizes follow the campaign pool table after 10,000 passes. |
+| Inventory | Per actor, four exponent-`1` coins seeded at ages `13`, `14`, `15` and `0`. `MaximumAge` is `16`, so both apps' forced threshold is `MaximumAge - 2 = 14`. The age-13 and age-0 coins are controls. |
+| Policy | Select Android or iOS for `wallet.recycling.unavailable_handling`. Disable discretionary privacy-preset verdicts, so only the forced-age guard selects coins. Keep the free-token allowance above the 20% reserve. |
+| Selection | At one controlled evaluation time, run the selected policy over every actor's coins. Expected result: the age-14 and age-15 coins are `MUST_RECYCLE`; the age-13 and age-0 coins are not selected. |
+| Load stage | Submit one `load_recycler_with_coin` per selected coin, without waiting between them. |
+| Use stage | After readiness, unload a fixed sample of the new vouchers with free tokens: `unload_recycler_into_coin` with one alias each, into a fresh key. Use 1,000 vouchers, or all of them below 1,000. |
+
+**Required evidence and checks:**
+
+- The selection matches the expected set exactly. Report selected, expected, wrongly selected and wrongly skipped coins.
+- All checks from the coin-load pilot for every submitted load.
+- Control coins are untouched: still present, with unchanged age.
+- For the use stage, the fixture's [unload checks](../unload-fixture.md#checks-for-every-unload) with `Coinage.RecyclerUnloadedIntoCoin`, and the output coin present at age `0`.
+- Report three times separately: load submission to load finality, load finality to observed ring readiness, and readiness to first successful unload finality. The last one is "time until the new vouchers are usable" in chain terms. It does not include the wallet's privacy delay.
+
+The use stage generates ring-VRF proofs against a ring that may still receive members from later loads. Keep loads stopped during the use stage and record any `InvalidRecyclerRevision` rejections.
+
+## Sponsored-instance variant
+
+Repeat the forced-age pilot's load stage on a sponsored instance (`create_sponsored_instance`). Fund its pot with `fund_pot` for every expected load plus a 10% margin. The deposit per loaded key is `CoinageLoadDeposit`, `7` native units in this runtime ([config][load-deposit]); read it at the starting block.
+
+- Check one held deposit per loaded key and the pot's remaining balance after the stage.
+- In the use stage, check that each unload settles its deposits ([settlement][settle-deposits]).
+- Running out of pot collateral is a separate case: [sponsored-pot exhaustion](sponsored-pot-exhaustion.md).
+
+## Incomplete 100,000 case
+
+The 100,000-actor coin-load case ended incomplete: 60,990 verified receipts and 39,917 members observed ready by the deadline, with three blocks missing from saved raw evidence. Before rerunning it, save every finalized block body during the stage rather than only receipt blocks. Extend the readiness deadline past the 30 minutes used, and say so in the result. A rerun is a new attempt; it does not replace the original result.
+
+[load-deposit]: https://github.com/paritytech/individuality-community/blob/fce93ef38a15c673a8b0b208362bc46ae755c7d7/runtimes/next-people-paseo/src/people.rs#L1638-L1639
+[settle-deposits]: https://github.com/paritytech/individuality-community/blob/fce93ef38a15c673a8b0b208362bc46ae755c7d7/pallets/coinage/src/pot.rs#L427

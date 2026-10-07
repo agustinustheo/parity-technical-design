@@ -34,6 +34,7 @@ The files fall into two groups. The first describes Coinage as it works today. T
 2. [Wallet module test components](test-design/wallet-module-components.md) — the four pieces of the load generator and what each depends on.
 3. [Profile schema](test-design/profile-schema.md) — the inputs that describe each simulated user.
 4. [Scenarios](test-design/scenarios/) — one draft file per scenario, listed in the [scenarios table](#scenarios).
+5. [Shared unload fixture](test-design/unload-fixture.md) — the people, vouchers and proofs every unload pilot needs.
 
 ## Purpose
 
@@ -195,8 +196,13 @@ These are candidates, not complete scenarios. Each has its own draft file in [`t
 | Recycling | [Free-quota exhaustion](test-design/scenarios/free-quota-exhaustion.md) | Unload demand exceeds the free unload allowance | C2.recycle, R2.origins, R4.cleanup | Wallet behaviour when the quota runs out; failed unloads; recovery in the next period |
 | Offboarding | [Offboarding burst](test-design/scenarios/offboarding-burst.md) | Many actors offboard to the external asset at the same time | C2.offboard, R1.calls, R2.origins, N1.pool | Value delivered to external accounts; partial offboards; unload throughput |
 | All | [Full-flow ramp](test-design/scenarios/full-flow-ramp.md) | A population runs every flow and the load is ramped | All artifacts | The first artifact to violate its response measure, how it fails and whether it recovers |
+| Onboarding and recycling on a sponsored instance | [Sponsored-pot exhaustion](test-design/scenarios/sponsored-pot-exhaustion.md) | Loads exceed the deposits a sponsored pot can hold | R1.calls, R2.origins, R6.pots, R7.recyclers, N1.pool | Loads accepted versus pot capacity; rejections by reason; recovery after funding |
+| Background cleanup | [Cleanup backlog](test-design/scenarios/cleanup-backlog.md) | A large backlog of expired state while users transact | R4.cleanup, R3.rings, R6.pots, R7.recyclers, N1.pool, N2.execution | Time to drain; user latency against a baseline; archived value recovered |
+| Instance setup | [Instance proliferation](test-design/scenarios/instance-proliferation.md) | Many instances exist while one instance carries a reference workload | R5.instances, R3.rings, R4.cleanup, N1.pool, N2.execution, N3.storage | Reference workload latency and ring readiness against the instance count |
 
 The next chain pilots are [split and claim](test-design/scenarios/payment-burst.md#next-pilot-split-and-claim) and [coin recycling into built rings](test-design/scenarios/synchronised-recycling.md#next-pilot-coin-loads-into-one-recycler-collection). Each case starts with a smoke test. The sequential campaign runs both flows at 100, 1,000 and 10,000 actors, then 20,000, 40,000 and 100,000 with larger pools. Failures remain results; the next independent case still runs. See each scenario for fallback runs and evidence requirements.
+
+Claim burst, top-up burst, split and claim, and coin recycling into built rings have run. Every other scenario now has a pilot, and every pilot that unloads a voucher uses the [shared unload fixture](test-design/unload-fixture.md). The unload pilots need a free-token unload builder that no harness has yet; the fixture explains what exists and what is missing.
 
 ## Means [TODO]
 
