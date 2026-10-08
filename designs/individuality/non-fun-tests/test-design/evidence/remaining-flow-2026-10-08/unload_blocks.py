@@ -11,6 +11,9 @@ CASES = {
     "offboard-100": ("coinage-burst-case-100-default-offboard-37590878841/coinage-offboard-100-burst-default-pilot-37590878841-1", "offboard"),
     "offboard-1000": ("coinage-burst-case-1000-default-offboard-37593396451/coinage-offboard-1000-burst-default-pilot-37593396451-1", "offboard"),
     "offboard-10000": ("coinage-burst-case-10000-burst-default-offboard-37606103903/coinage-offboard-10000-burst-default-pilot-37606103903-1", "offboard"),
+    "quota-1000": ("coinage-burst-case-1000-default-quota-37690106740/coinage-quota-1000-burst-default-pilot-37690106740-1", "quota"),
+    "offboard-10000-paced-wave-1": ("coinage-burst-case-10000-paced-default-offboard-37645548491/coinage-offboard-10000-paced-default-pilot-37645548491-1", "offboard", 1),
+    "offboard-10000-paced-wave-2": ("coinage-burst-case-10000-paced-default-offboard-37645548491/coinage-offboard-10000-paced-default-pilot-37645548491-1", "offboard", 2),
 }
 
 
@@ -25,17 +28,19 @@ def block_number(header):
 
 
 out = {"definitions": {
-    "receiptsFile": "Verified receipts in the run's own <scenario>-pilot-wave-1-receipts.json, grouped by block number (original watches only).",
+    "receiptsFile": "Verified receipts in the run's own <scenario>-pilot-wave-<n>-receipts.json, grouped by block number (original watches only).",
     "rawBlocks": "Independent pass over saved raw blocks: extrinsics whose events include System.ExtrinsicSuccess and Coinage.RecyclerUnloadedIntoExternalAsset. Includes reconciled receipts.",
     "stopReasons": "Collator log line 'Prepared block for proposing at N ... end: <reason>; extrinsics_count: K', matched to each canonical block by height and extrinsic count (the logged hash is taken before sealing, so it differs from the final block hash).",
     "refTimeMs": "ref_time in the ExtrinsicSuccess dispatch_info of each successful unload (post-dispatch weight), in milliseconds.",
-    "proofs": "Client proof generation time per proof kind, nearest-rank percentiles, from <scenario>-pilot-wave-1-proofs.jsonl. Generated before release; not part of finality."}}
-for name, (rel, sc) in CASES.items():
+    "proofs": "Client proof generation time per proof kind, nearest-rank percentiles, from <scenario>-pilot-wave-<n>-proofs.jsonl. Generated before release; not part of finality."}}
+for name, spec in CASES.items():
+    rel, sc = spec[0], spec[1]
+    wave = spec[2] if len(spec) > 2 else 1
     path = f"{ROOT}/{rel}"
-    receipts = json.load(open(f"{path}/{sc}-pilot-wave-1-receipts.json"))
+    receipts = json.load(open(f"{path}/{sc}-pilot-wave-{wave}-receipts.json"))
     items = receipts if isinstance(receipts, list) else next(v for v in receipts.values() if isinstance(v, list))
     per_receipt_block = collections.Counter(x["block"]["number"] if isinstance(x.get("block"), dict) else x.get("blockNumber") for x in items)
-    files = glob.glob(f"{path}/evidence/{sc}-pilot-wave-1/block-*.json") or glob.glob(f"{path}/{sc}-pilot-block-*.json")
+    files = glob.glob(f"{path}/evidence/{sc}-pilot-wave-{wave}/block-*.json") or glob.glob(f"{path}/{sc}-pilot-block-*.json")
     per_block, extrinsic_count, weights, hashes = {}, {}, [], set()
     for f in files:
         b = json.load(open(f))
@@ -64,7 +69,7 @@ for name, (rel, sc) in CASES.items():
                 reasons[int(m[1])].add(m[4])
     full = max(per_block.values())
     stop = collections.Counter(("/".join(sorted(reasons[n])) if reasons.get(n) else "unmatched", "full" if c == full else "partial") for n, c in per_block.items())
-    proofs = [json.loads(line) for line in open(f"{path}/{sc}-pilot-wave-1-proofs.jsonl")]
+    proofs = [json.loads(line) for line in open(f"{path}/{sc}-pilot-wave-{wave}-proofs.jsonl")]
     proof_summary = {}
     for kind in sorted({p["kind"] for p in proofs}):
         v = [p["durationMs"] / 1000 for p in proofs if p["kind"] == kind]

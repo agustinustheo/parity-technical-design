@@ -1,10 +1,10 @@
 {
  "definitions": {
-  "receiptsFile": "Verified receipts in the run's own <scenario>-pilot-wave-1-receipts.json, grouped by block number (original watches only).",
+  "receiptsFile": "Verified receipts in the run's own <scenario>-pilot-wave-<n>-receipts.json, grouped by block number (original watches only).",
   "rawBlocks": "Independent pass over saved raw blocks: extrinsics whose events include System.ExtrinsicSuccess and Coinage.RecyclerUnloadedIntoExternalAsset. Includes reconciled receipts.",
   "stopReasons": "Collator log line 'Prepared block for proposing at N ... end: <reason>; extrinsics_count: K', matched to each canonical block by height and extrinsic count (the logged hash is taken before sealing, so it differs from the final block hash).",
   "refTimeMs": "ref_time in the ExtrinsicSuccess dispatch_info of each successful unload (post-dispatch weight), in milliseconds.",
-  "proofs": "Client proof generation time per proof kind, nearest-rank percentiles, from <scenario>-pilot-wave-1-proofs.jsonl. Generated before release; not part of finality."
+  "proofs": "Client proof generation time per proof kind, nearest-rank percentiles, from <scenario>-pilot-wave-<n>-proofs.jsonl. Generated before release; not part of finality."
  },
  "quota-100": {
   "receiptsFile": {
@@ -150,6 +150,111 @@
    "foundAsSuccessfulUnload": 89,
    "rejectedAtPoolEntry": 989,
    "rejectedFoundInSavedBlocks": 0
+  }
+ },
+ "quota-1000": {
+  "receiptsFile": {
+   "verified": 1000,
+   "blocks": 44,
+   "maxPerBlock": 23
+  },
+  "rawBlocks": {
+   "files": 44,
+   "unloadSuccesses": 1000,
+   "blocks": 44,
+   "maxPerBlock": 23,
+   "blocksAtMax": 43,
+   "refTimeMs": [
+    62.924
+   ]
+  },
+  "stopReasons": {
+   "HitBlockWeightLimit (full blocks)": 43,
+   "NoMoreTransactions (partial blocks)": 1
+  },
+  "proofs": {
+   "person-token": {
+    "count": 1000,
+    "p50": 0.797,
+    "p95": 0.844,
+    "max": 0.911
+   },
+   "recycler": {
+    "count": 1000,
+    "p50": 1.664,
+    "p95": 1.739,
+    "max": 1.835
+   }
+  }
+ },
+ "offboard-10000-paced-wave-1": {
+  "receiptsFile": {
+   "verified": 8000,
+   "blocks": 348,
+   "maxPerBlock": 23
+  },
+  "rawBlocks": {
+   "files": 348,
+   "unloadSuccesses": 8000,
+   "blocks": 348,
+   "maxPerBlock": 23,
+   "blocksAtMax": 347,
+   "refTimeMs": [
+    62.924
+   ]
+  },
+  "stopReasons": {
+   "HitBlockWeightLimit (full blocks)": 347,
+   "NoMoreTransactions (partial blocks)": 1
+  },
+  "proofs": {
+   "person-token": {
+    "count": 8000,
+    "p50": 0.89,
+    "p95": 0.943,
+    "max": 1.03
+   },
+   "recycler": {
+    "count": 8000,
+    "p50": 1.672,
+    "p95": 1.756,
+    "max": 1.869
+   }
+  }
+ },
+ "offboard-10000-paced-wave-2": {
+  "receiptsFile": {
+   "verified": 2000,
+   "blocks": 87,
+   "maxPerBlock": 23
+  },
+  "rawBlocks": {
+   "files": 87,
+   "unloadSuccesses": 2000,
+   "blocks": 87,
+   "maxPerBlock": 23,
+   "blocksAtMax": 86,
+   "refTimeMs": [
+    62.924
+   ]
+  },
+  "stopReasons": {
+   "HitBlockWeightLimit (full blocks)": 86,
+   "NoMoreTransactions (partial blocks)": 1
+  },
+  "proofs": {
+   "person-token": {
+    "count": 2000,
+    "p50": 0.889,
+    "p95": 0.949,
+    "max": 1.011
+   },
+   "recycler": {
+    "count": 2000,
+    "p50": 1.677,
+    "p95": 1.737,
+    "max": 1.834
+   }
   }
  }
 }
