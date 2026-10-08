@@ -1,0 +1,210 @@
+---
+layout: null
+title: Coinage stress metrics — slides
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coinage stress metrics — what we learned</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root {
+    --r-background-color: #fcfcfb;
+    --r-main-color: #0b0b0b;
+    --r-heading-color: #0b0b0b;
+    --r-link-color: #2a78d6;
+    --r-main-font: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --r-heading-font: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --r-main-font-size: 30px;
+    --r-heading-text-transform: none;
+    --r-heading-font-weight: 700;
+  }
+  .reveal h1 { font-size: 2.1em; }
+  .reveal h2 { font-size: 1.45em; margin-bottom: 0.5em; }
+  .reveal .kicker { color: #52514e; font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.4em; }
+  .reveal .muted { color: #52514e; }
+  .reveal .small { font-size: 0.65em; }
+  .reveal .big { font-size: 3.2em; font-weight: 700; line-height: 1; color: #2a78d6; }
+  .reveal .big-label { font-size: 0.8em; color: #52514e; margin-top: 0.3em; }
+  .reveal ul { display: block; margin-left: 1em; }
+  .reveal li { margin: 0.35em 0; line-height: 1.3; }
+  .reveal blockquote { width: 90%; font-style: normal; box-shadow: none; border-left: 6px solid #2a78d6; background: #f0efec; padding: 0.6em 1em; text-align: left; }
+  .reveal img.chart { display: block; height: 450px; width: auto; max-width: 100%; margin: 0.3em auto; border: 0; box-shadow: none; background: #fcfcfb; }
+  .reveal table { font-size: 0.74em; margin: 0.4em auto; }
+  .reveal table th, .reveal table td { padding: 0.25em 0.6em; border-bottom: 1px solid #e1e0d9; }
+  .reveal .cols { display: flex; gap: 1.5em; align-items: center; text-align: left; }
+  .reveal .cols > * { flex: 1; }
+  .reveal .stat-row { display: flex; gap: 1em; justify-content: center; margin-top: 0.6em; }
+  .reveal .stat { flex: 1; background: #f0efec; border-radius: 8px; padding: 0.6em 0.4em; }
+  .reveal .stat b { display: block; font-size: 1.6em; color: #2a78d6; }
+  .reveal .stat span { font-size: 0.6em; color: #52514e; }
+  .reveal .fail b { color: #d03b3b; }
+  .reveal section { text-align: left; }
+  .reveal section.center { text-align: center; }
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="center">
+  <p class="kicker">Coinage stress testing · October 2026</p>
+  <h1>Stress testing Coinage: what we measured and why</h1>
+  <p class="muted">Five flows on a local PreviewNet, from 100 to 150,000 actors</p>
+  <p class="small"><a href="coinage-stress-metrics.html">Full report</a> · <a href="coinage-stress-metrics-appendix.html">Appendix</a> · press <kbd>S</kbd> for speaker notes</p>
+  <aside class="notes">About 15 minutes. Plan: why a chain is different (2 min), the metrics and where they come from (3 min), the scenarios (2 min), five results (6 min), limits and next steps (2 min).</aside>
+</section>
+
+<section>
+  <p class="kicker">Starting point</p>
+  <h2>A chain is not a REST API, but we can test it like one</h2>
+  <div class="cols">
+    <div>
+      <p class="small"><b>REST API</b></p>
+      <ul class="small">
+        <li>Send a request</li>
+        <li>Get a response</li>
+        <li>Done: you know if it worked</li>
+      </ul>
+    </div>
+    <div>
+      <p class="small"><b>Coinage transaction</b></p>
+      <ul class="small">
+        <li>Send it, and it waits in a <b>pool</b></li>
+        <li>It goes into a <b>block</b></li>
+        <li>The block becomes <b>final</b></li>
+        <li>Only then do we know if it worked</li>
+      </ul>
+    </div>
+  </div>
+  <p class="fragment">So I took the metrics we use for REST API load tests, like JMeter's, and changed what "a response" means.</p>
+  <aside class="notes">The node answering "accepted" is not the response. A node can accept a transaction and lose it later. The real response is a successful receipt in a finalized block.</aside>
+</section>
+
+<section>
+  <p class="kicker">The metrics</p>
+  <h2>From JMeter to Coinage</h2>
+  <table>
+    <thead><tr><th>JMeter / REST API test</th><th>What we measure in Coinage</th><th>Why it matters</th></tr></thead>
+    <tbody>
+      <tr><td>Assertion passed</td><td><b>Verified receipt</b> + correct final coin state</td><td>Did the money actually move?</td></tr>
+      <tr><td>Error %</td><td>Transactions with no verified receipt</td><td>A lost payment is the worst outcome</td></tr>
+      <tr><td>HTTP 503 / connection refused</td><td><b>Pool rejections</b> (error 1016)</td><td>What a spike looks like at the door</td></tr>
+      <tr><td>Response time: median, 95% and 99% line</td><td><b>Finality</b> p50 / p95 / p99</td><td>How long people at the back wait</td></tr>
+      <tr><td>Throughput (requests/s)</td><td><b>Transactions per block</b></td><td>How fast a queue can drain</td></tr>
+      <tr><td>Thread group ramp-up</td><td><b>Burst</b> vs <b>waves</b>, and pool size</td><td>Does spreading the load help?</td></tr>
+      <tr><td>Server monitoring (PerfMon)</td><td>Machine CPU and memory</td><td>Did we test the chain or our tooling?</td></tr>
+    </tbody>
+  </table>
+  <p class="small fragment">One Coinage-only metric: <b>readiness</b>, when a new coin can actually be used. REST APIs have no equivalent.</p>
+  <aside class="notes">I report p95 rather than the average because the average hides the people at the back of the queue. We do not report a TPS number, because a finite burst does not show a sustainable rate.</aside>
+</section>
+
+<section>
+  <p class="kicker">The scenarios</p>
+  <h2>Five flows, each a burst of signed transactions</h2>
+  <table>
+    <thead><tr><th>Flow</th><th>What one actor does</th><th>Largest verified run</th></tr></thead>
+    <tbody>
+      <tr><td>Top-up</td><td>Pays with an external asset, gets a voucher</td><td>10,000</td></tr>
+      <tr><td>Claim</td><td>Transfers one coin</td><td>150,000</td></tr>
+      <tr><td>Split-and-claim</td><td>Splits a coin, then claims it</td><td>100,000 actors</td></tr>
+      <tr><td>Recycling</td><td>Loads a coin into a recycler</td><td>40,000</td></tr>
+      <tr><td>Merchant fan-in</td><td>Pays one merchant</td><td>20,000</td></tr>
+      <tr class="muted"><td>Unloads (quota, offboarding)</td><td>Cashes out to the external asset</td><td>10,000 (preliminary)</td></tr>
+    </tbody>
+  </table>
+  <p class="small muted">Each flow ran at several sizes, sent all at once or in waves, on the default pool or a bigger one. Not covered: the wallet planner, chat, TrUAPI and the mobile screens.</p>
+  <aside class="notes">All on one parity-large runner: 32 logical CPUs, 62.8 GiB RAM, 6 relay validators and 2 People collators, with the load generator on the same machine. Full flow, sponsored pot, cleanup backlog and instance proliferation are not run yet.</aside>
+</section>
+
+<section class="center">
+  <p class="kicker">Result 1 · Correctness</p>
+  <div class="big">150,000</div>
+  <div class="big-label">claims in one burst: 150,000 verified receipts, <b>zero errors</b></div>
+  <div class="stat-row small">
+    <div class="stat"><b>200,000</b><span>split-and-claim receipts, all verified</span></div>
+    <div class="stat"><b>20,000</b><span>merchant payments, all verified</span></div>
+    <div class="stat fail"><b>1,000,000</b><span>did not run: our load generator ran out of memory</span></div>
+  </div>
+  <aside class="notes">Every passing run had zero errors in its receipts and coin states. The one-million failure is a test tool limit, not a chain limit.</aside>
+</section>
+
+<section>
+  <p class="kicker">Result 2 · Throughput</p>
+  <h2>The block, not the pool, sets the speed</h2>
+  <img class="chart" style="height:400px" src="evidence/stress-metrics-2026-10-05/blocks.svg" alt="Bar charts of claims per block for 20,000, 40,000 and 100,000 claims. Every full block holds 2,363 claims.">
+  <p class="small">Every full block held exactly <b>2,363 claims</b> and stopped at the block weight limit. A bigger pool lets more claims wait; it doesn't make blocks hold more.</p>
+  <aside class="notes">This is our throughput metric. Instead of requests per second, it's transactions per block. The queue drains by about 2,363 claims each block.</aside>
+</section>
+
+<section>
+  <p class="kicker">Result 3 · Error rate under a spike</p>
+  <h2>10,000 at once on the default pool: 1 in 10 rejected</h2>
+  <table>
+    <thead><tr><th>Flow</th><th>Rejected at the door</th><th>Verified receipts</th></tr></thead>
+    <tbody>
+      <tr><td>Top-up</td><td>989</td><td>9,011</td></tr>
+      <tr><td>Claim</td><td>989</td><td>8,192</td></tr>
+      <tr><td>Merchant fan-in</td><td>989</td><td>9,011</td></tr>
+      <tr><td>Recycling</td><td>989</td><td>8,724</td></tr>
+      <tr><td>Offboarding</td><td>989</td><td>9,011</td></tr>
+    </tbody>
+  </table>
+  <p class="small fragment">The default pool holds 9,011 (8,192 ready + 819 future). <b>Sending in waves fixed it in every flow, and so did a bigger pool wherever we have a result.</b></p>
+  <aside class="notes">This is our "ramp-up" finding. Same total load, different arrival pattern: a single spike fails, waves pass.</aside>
+</section>
+
+<section>
+  <p class="kicker">Result 4 · Response time</p>
+  <h2>Response time grows in a straight line with load</h2>
+  <img class="chart" style="height:400px" src="evidence/stress-metrics-2026-10-05/topup-trend.svg" alt="Top-up p95 against batch size: about 22 seconds more finality and 28 seconds more readiness per 1,000 top-ups.">
+  <p class="small">Each extra 1,000 top-ups added about <b>22 s</b> to finality p95 and <b>28 s</b> to readiness p95.</p>
+  <aside class="notes">This follows from Result 2: a fixed number per block means a queue drains at a steady rate, so wait time grows with queue length. Four passing runs only, so a strong pattern, not a model.</aside>
+</section>
+
+<section>
+  <p class="kicker">Result 5 · The slowest flow</p>
+  <h2>Unloads: only 23 fit in a block</h2>
+  <div class="stat-row">
+    <div class="stat"><b>2,363</b><span>claims per full block</span></div>
+    <div class="stat fail"><b>23</b><span>unloads per full block</span></div>
+  </div>
+  <ul class="small">
+    <li>Each unload uses 62.9 ms of the 1.5 s block budget, so 23 fit and a 24th doesn't.</li>
+    <li class="fragment">10,000 offboards at once took <b>56 minutes</b> at p95. In waves, all 10,000 verified.</li>
+  </ul>
+  <aside class="notes">Unload cases are still preliminary: two of six offboarding profiles and four of six quota profiles have no result yet.</aside>
+</section>
+
+<section>
+  <p class="kicker">Server monitoring</p>
+  <h2>The machine was not the limit</h2>
+  <img class="chart" style="height:400px" src="evidence/stress-metrics-2026-10-05/machine-resources.svg" alt="During the 100,000-claim run, machine CPU averaged 12% with a 21% peak; memory rose from 12 GiB to 19.8 GiB.">
+  <p class="small">CPU: about 5% idle → 12% average, 21% peak during 100,000 claims. Memory 12 → 19.8 GiB, partly our load generator.</p>
+  <aside class="notes">Like PerfMon in JMeter: it tells us whether we measured the chain or our own tooling. Here the chain's block limit was the bottleneck, not the hardware.</aside>
+</section>
+
+<section>
+  <p class="kicker">Wrap-up</p>
+  <h2>What this does and doesn't show</h2>
+  <ul>
+    <li><b>Shows:</b> what bursts Coinage completed correctly, how long people waited, and where the limit is (block weight, not hardware).</li>
+    <li><b>Doesn't show:</b> a sustainable TPS or a capacity ceiling. These were finite bursts.</li>
+    <li><b>Next:</b> the remaining quota and offboarding profiles, full flow, sustained load, sponsored pot, cleanup backlog and instance proliferation.</li>
+  </ul>
+  <blockquote>Acceptance tells us a transaction got in the door. <b>A verified receipt tells us the money moved.</b></blockquote>
+  <p class="small"><a href="coinage-stress-metrics.html">Full report</a> · <a href="coinage-stress-metrics-appendix.html">Appendix</a></p>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+<script>
+  Reveal.initialize({ hash: true, slideNumber: "c/t", width: 1280, height: 720, margin: 0.06, plugins: [RevealNotes] });
+</script>
+</body>
+</html>

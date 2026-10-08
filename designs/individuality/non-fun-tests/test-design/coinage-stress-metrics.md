@@ -10,6 +10,8 @@ We ran five flows with 100 to 150,000 actors. We also tried one million. Some ru
 
 The exact numbers are in the [measurement appendix](coinage-stress-metrics-appendix.md). You can also [download the extracted data](evidence/stress-metrics-2026-10-05/metrics.json) and check it yourself.
 
+Presenting this? The main insights are also in a [slide deck](coinage-stress-metrics-slides.html).
+
 ## The short version
 
 - **10,000 top-ups and 10,000 claims.** One burst of 10,000 on the default pool did not complete. The pool rejected 989 submissions in each flow. Waves and a bigger pool both fixed this.
