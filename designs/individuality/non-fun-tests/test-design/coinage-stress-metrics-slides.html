@@ -176,6 +176,17 @@ title: Coinage stress metrics — slides
   .compare .fill.red { background: var(--fail); min-width: 6px; }
   .compare .val { font: 400 1.6em/1 var(--serif); letter-spacing: -0.02em; text-align: right; }
 
+  /* Full-flow stages */
+  .stages { display: grid; grid-template-columns: 200px 1fr 110px; gap: 10px 18px; align-items: center; margin: 0.3em 0 0.9em; }
+  .stages .name { font-size: 0.62em; font-weight: 500; }
+  .stages .name small { display: block; font: 500 0.7em/1.3 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); }
+  .stages .track { height: 38px; border-radius: 8px; background: var(--surface-2); overflow: hidden; }
+  .stages .fill { height: 100%; background: var(--none); }
+  .stages .fill.unload { background: var(--data); }
+  .stages .val { font: 400 1.1em/1 var(--serif); letter-spacing: -0.02em; text-align: right; }
+  .stat-row.compact .stat { padding: 12px 14px; }
+  .stat-row.compact .stat b { font-size: 1.2em; }
+
   /* Wrap-up */
   .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 1em; }
   .three > div { background: var(--dark-surface); border: 1px solid var(--dark-border); border-radius: 16px; padding: 20px 22px; }
@@ -197,7 +208,7 @@ title: Coinage stress metrics — slides
   <div class="rule"></div>
   <p class="muted">Five flows on a local PreviewNet, from 100 to 150,000 actors</p>
   <p class="tiny" style="margin-top:2.2em"><a href="coinage-stress-metrics.html">Full report</a> · <a href="coinage-stress-metrics-appendix.html">Appendix</a> · press <kbd>S</kbd> for speaker notes</p>
-  <aside class="notes">About 15 minutes. Plan: why a chain is different (2 min), the metrics and where they come from (3 min), the scenarios (2 min), five results (6 min), limits and next steps (2 min).</aside>
+  <aside class="notes">About 15 minutes. Plan: why a chain is different (2 min), the metrics and where they come from (3 min), the scenarios (2 min), six results (7 min), limits and next steps (1 min).</aside>
 </section>
 
 <section>
@@ -250,13 +261,13 @@ title: Coinage stress metrics — slides
     <div class="card"><h3>Split-and-claim</h3><p>Splits a coin, then claims it</p><div class="num">100,000<small>actors</small></div></div>
     <div class="card"><h3>Recycling</h3><p>Loads a coin into a recycler</p><div class="num">40,000</div></div>
     <div class="card"><h3>Merchant fan-in</h3><p>Pays one merchant</p><div class="num">20,000</div></div>
-    <div class="card prelim"><h3>Unloads · preliminary</h3><p>Free quota and offboarding: cash out to the external asset</p><div class="num">10,000<small>in waves</small></div></div>
+    <div class="card prelim"><h3>Unloads</h3><p>Free quota (all six profiles) and offboarding (preliminary): cash out</p><div class="num">10,000<small>in waves</small></div></div>
   </div>
   <p class="tiny" style="margin-top:0.8em">Number = largest fully verified run. Each flow ran at several sizes, at once or in waves, on the default pool or a bigger one.</p>
   <div class="chips">
     <span class="chip">parity-large runner</span><span class="chip">32 logical CPUs · 62.8 GiB</span><span class="chip">6 validators + 2 People collators</span><span class="chip">one machine</span><span class="chip">not covered: wallet planner, chat, TrUAPI, mobile</span>
   </div>
-  <aside class="notes">All on one parity-large runner, with the load generator on the same machine. Full flow, sponsored pot, cleanup backlog and instance proliferation are not run yet.</aside>
+  <aside class="notes">All on one parity-large runner, with the load generator on the same machine. Full flow ran end to end at 1,000 people (Result 6). Sponsored pot, cleanup backlog and instance proliferation are not run yet.</aside>
 </section>
 
 <section class="center">
@@ -305,6 +316,9 @@ title: Coinage stress metrics — slides
     <div class="name">Offboarding</div>
     <div class="track"><div class="seg ok" style="width:90.11%">9,011</div><div class="seg rej" style="width:9.89%">989</div></div>
     <div class="pct">90.1%</div>
+    <div class="name">Free quota</div>
+    <div class="track"><div class="seg ok" style="width:90.11%">9,011</div><div class="seg rej" style="width:9.89%">989</div></div>
+    <div class="pct">90.1%</div>
   </div>
   <div class="legend"><span><i style="background:var(--data)"></i>Verified receipt</span><span><i style="background:var(--fail)"></i>Rejected at the door</span><span><i style="background:var(--none)"></i>No receipt found</span><span style="margin-left:auto">Right: share verified</span></div>
   <p class="fragment callout">The default pool holds 9,011 (8,192 ready + 819 future). <b>Sending in waves fixed it in every flow, and so did a bigger pool wherever we have a result.</b></p>
@@ -341,7 +355,26 @@ title: Coinage stress metrics — slides
     <li>Each unload uses 62.9 ms of the 1.5 s block budget, so 23 fit and a 24th doesn't.</li>
     <li class="fragment">10,000 offboards at once took <b>56 minutes</b> at p95. In waves, all 10,000 verified.</li>
   </ul>
-  <aside class="notes">Unload cases are still preliminary: two of six offboarding profiles and four of six quota profiles have no result yet.</aside>
+  <aside class="notes">All six free-quota profiles now have results; offboarding is still preliminary (10,000 on a bigger pool has no result, and 20,000 has incomplete receipt evidence). Every full unload block in every case held 23.</aside>
+</section>
+
+<section>
+  <p class="kicker">Result 6 · End to end</p>
+  <h2>The whole lifecycle works at 1,000 people, and unloads set the pace</h2>
+  <div class="stages">
+    <div class="name">Top-up</div><div class="track"><div class="fill" style="width:17.7%"></div></div><div class="val">53 s</div>
+    <div class="name">Payment unload<small>23 per block</small></div><div class="track"><div class="fill unload" style="width:98.8%"></div></div><div class="val">297 s</div>
+    <div class="name">Claim</div><div class="track"><div class="fill" style="width:10.5%"></div></div><div class="val">31 s</div>
+    <div class="name">Recycle</div><div class="track"><div class="fill" style="width:16.1%"></div></div><div class="val">48 s</div>
+    <div class="name">Offboard<small>23 per block</small></div><div class="track"><div class="fill unload" style="width:90.8%"></div></div><div class="val">272 s</div>
+  </div>
+  <div class="stat-row compact">
+    <div class="stat"><b>5,000 / 5,000</b><span>receipts verified across five stages</span></div>
+    <div class="stat"><b>44 blocks</b><span>for each unload stage</span></div>
+    <div class="stat"><b>1 block</b><span>for all 1,000 claims</span></div>
+  </div>
+  <p class="tiny" style="margin-top:0.8em">Finality p95 per stage. Each person follows one fixed plan: top-up → unload into a payment coin → claim → recycle → offboard. Not the wallet planner.</p>
+  <aside class="notes">Smoke and 100 people also passed every stage. 10,000 at once was a test-tool failure: our sender lost its connection, so no load reached the chain; a retry is running. The two unload stages take most of the time because each block fits only 23 unloads. Per-block numbers for the other stages are what we saw, not capacity.</aside>
 </section>
 
 <section>
@@ -365,7 +398,7 @@ title: Coinage stress metrics — slides
   <div class="three">
     <div><h3>Shows</h3><p>Which bursts Coinage completed correctly, how long people waited, and where the limit is: block weight, not hardware.</p></div>
     <div class="no"><h3>Doesn't show</h3><p>A sustainable TPS or a capacity ceiling. These were finite bursts.</p></div>
-    <div class="next"><h3>Next</h3><p>Remaining quota and offboarding profiles, full flow, sustained load, sponsored pot, cleanup backlog, instance proliferation.</p></div>
+    <div class="next"><h3>Next</h3><p>Remaining offboarding profiles, full flow at 10,000 and above, sustained load, sponsored pot, cleanup backlog, instance proliferation.</p></div>
   </div>
   <div class="quote"><em>Acceptance tells us a transaction got in the door.</em><br>A verified receipt tells us the money moved.</div>
   <p class="tiny"><a href="coinage-stress-metrics.html">Full report</a> · <a href="coinage-stress-metrics-appendix.html">Appendix</a></p>
