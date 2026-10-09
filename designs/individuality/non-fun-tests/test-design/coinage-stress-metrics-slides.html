@@ -223,6 +223,16 @@ title: Coinage stress metrics — slides
   .cols-2 .lesson p.why { font-size: 0.6em; }
   .reveal .callout.warn { background: var(--fail-soft); border-color: #f2c9c9; font-size: 0.64em; }
 
+  /* Backup: raising the limit */
+  .glossary { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .glossary .lesson h3 { font-size: 0.78em; }
+  .glossary .lesson p { font-size: 0.58em; margin-bottom: 0.4em; }
+  .glossary .lesson p b { color: var(--text); }
+  .glossary dl { margin: 0; font-size: 0.56em; }
+  .glossary dt { font-weight: 600; color: var(--text); margin-top: 0.4em; }
+  .glossary dt:first-child { margin-top: 0; }
+  .glossary dd { margin: 0.15em 0 0; color: var(--text-2); }
+
   /* Wrap-up */
   .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 1em; }
   .three > div { background: var(--dark-surface); border: 1px solid var(--dark-border); border-radius: 16px; padding: 20px 22px; }
@@ -463,6 +473,32 @@ title: Coinage stress metrics — slides
   <div class="quote"><em>Acceptance tells us a transaction got in the door.</em><br>A verified receipt tells us the money moved.</div>
   <p class="tiny"><a href="coinage-stress-metrics.html">Full report</a> · <a href="coinage-stress-metrics-appendix.html">Appendix</a></p>
 </section>
+
+<section>
+  <p class="kicker">Backup · Raising the limit</p>
+  <h2>More throughput needs more cores, not more collators</h2>
+  <div class="glossary">
+    <div class="lesson">
+      <h3>Who does what</h3>
+      <dl>
+        <dt>Collator</dt><dd>Builds our parachain blocks. Collators take turns on the same chain, so adding more adds backup, not blocks.</dd>
+        <dt>Relay-chain core</dt><dd>A lane in the relay chain: each lets one parachain block be checked by a small group of validators and included per relay block. Today we use one, so one block every 6 s.</dd>
+        <dt>GRANDPA</dt><dd>Finalizes relay-chain blocks. Our block is final when the relay block that included it is final.</dd>
+        <dt>Coretime</dt><dd>How a parachain gets cores: bought from the Coretime chain, in bulk or on demand. Adding our own nodes doesn't create cores.</dd>
+      </dl>
+    </div>
+    <div class="lesson">
+      <h3>Ways to raise the limit (untested)</h3>
+      <p><b>More cores (elastic scaling).</b> 4 cores = 4 blocks per 6 s, so up to about 92 unloads instead of 23. Needs coretime, elastic scaling in the runtime and collators, and fast enough collators.</p>
+      <p><b>Lighter unloads.</b> Each costs 62.9 ms, mostly two ring-VRF proof checks. Halve it and twice as many fit.</p>
+      <p><b>Bigger share for normal transactions.</b> Up to about +20% (1.5 s → 1.8 s of the 2 s).</p>
+      <p><b>Not an option: heavier blocks.</b> 2 s is about the most relay validators allow to re-check a parachain block. An idle collator doesn't change that.</p>
+    </div>
+  </div>
+  <p class="callout warn" style="margin-top:0.9em">The catch: with 4 cores, each block must be built in about 1.5 s. On our machine, building a full 23-unload block took <b>2.7 s</b> (median of 391 blocks). So the real gain would be less than 4×. Locally we could test it by giving our parachain extra cores with a sudo call and turning on elastic scaling.</p>
+  <aside class="notes">More cores raise throughput (transactions per second). A single transaction's latency stays about one block plus finality; it only gets faster under load because the queue drains sooner. Block building time is from the collator logs of the 10,000-offboard run (range 2.58 to 2.83 s); it ran on a shared machine and includes work beyond the unloads themselves.</aside>
+</section>
+
 
 </div></div>
 <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
