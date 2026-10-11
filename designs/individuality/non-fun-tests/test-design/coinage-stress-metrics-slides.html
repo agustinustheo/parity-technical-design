@@ -167,8 +167,6 @@ title: Coinage stress metrics — slides
   .bars .ok { background: var(--data); }
   .bars .rej { background: var(--fail); justify-content: center; padding: 0; }
   .bars .lost { background: var(--none); color: var(--text); justify-content: center; padding: 0; }
-  .bars .unsaved, .legend i.unsaved { background: repeating-linear-gradient(135deg, var(--none) 0 4px, var(--surface) 4px 7px); }
-  .bars .unsaved { color: var(--text); justify-content: center; padding: 0; }
   .bars .pct { font: 400 0.95em/1 var(--serif); text-align: right; }
   .legend { display: flex; flex-wrap: wrap; gap: 8px 22px; font: 500 0.42em/1 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); margin: 1.2em 0 0; }
   .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
@@ -376,8 +374,8 @@ title: Coinage stress metrics — slides
     <div class="track"><div class="seg ok" style="width:90.11%">9,011</div><div class="seg rej" style="width:9.89%">989</div></div>
     <div class="pct">90.1%</div>
     <div class="name">Recycling</div>
-    <div class="track"><div class="seg ok" style="width:87.24%">8,724</div><div class="seg rej" style="width:9.89%">989</div><div class="seg unsaved" style="width:2.87%">287</div></div>
-    <div class="pct">87.2%</div>
+    <div class="track"><div class="seg ok" style="width:90.11%">9,011</div><div class="seg rej" style="width:9.89%">989</div></div>
+    <div class="pct">90.1%</div>
     <div class="name">Offboarding</div>
     <div class="track"><div class="seg ok" style="width:90.11%">9,011</div><div class="seg rej" style="width:9.89%">989</div></div>
     <div class="pct">90.1%</div>
@@ -385,9 +383,10 @@ title: Coinage stress metrics — slides
     <div class="track"><div class="seg ok" style="width:90.11%">9,011</div><div class="seg rej" style="width:9.89%">989</div></div>
     <div class="pct">90.1%</div>
   </div>
-  <div class="legend"><span><i style="background:var(--data)"></i>Verified receipt</span><span><i style="background:var(--fail)"></i>Rejected at the door</span><span><i style="background:var(--none)"></i>Accepted, then evicted (never ran)</span><span><i class="unsaved"></i>Ran, but block not saved</span><span style="margin-left:auto">Right: share verified</span></div>
+  <div class="legend"><span><i style="background:var(--data)"></i>Verified receipt</span><span><i style="background:var(--fail)"></i>Rejected at the door</span><span><i style="background:var(--none)"></i>Accepted, then evicted (never ran)</span><span style="margin-left:auto">Right: share verified</span></div>
+  <p class="tiny" style="margin:0.6em 0 0">Recycling: 287 of the 9,011 are confirmed by chain state, not by a receipt, because the test did not save their block.</p>
   <p class="fragment callout">The pool admits 9,011 (8,192 ready + 819 future), but each block-building view keeps only 8,192 ready. In the claim run, the pool evicted the 819 oldest before any block started, so they never ran. In the other flows, the pool also dropped some, but a block or the second collator still had them. <b>Sending in waves fixed it in every flow, and so did a bigger pool wherever we have a result.</b></p>
-  <aside class="notes">The pool admits 9,011 (8,192 ready + 819 future), but each block-building view keeps only 8,192 ready. Claims are all independent, so all 9,011 were ready at once. The pool then evicted the 819 oldest: they had equal priority, so the oldest go first. In this node version, "dropped" is final. In merchant, top-up, offboarding and quota, the node also dropped some transactions, but they still ran: a block being built already held them (merchant), or they were already in a block or the second collator still had them (the others). So they are blue. Claim: both collators evicted the same 819 before the first block started. They never ran: the coins were unchanged, and blocks #173754 to #173778 held inherents only. Recycling: the 287 very probably ran in block #173175, which the old test version did not save. It saved only blocks with a finalized watch; this was fixed later in commit 7f269bc. This is an inference: the block body was not saved, so the hashes were not checked. Sending in waves fixed it in every flow, and so did a bigger pool wherever we have a result.</aside>
+  <aside class="notes">The pool admits 9,011 (8,192 ready + 819 future), but each block-building view keeps only 8,192 ready. Claims are all independent, so all 9,011 were ready at once. The pool then evicted the 819 oldest: they had equal priority, so the oldest go first. In this node version, "dropped" is final. In merchant, top-up, offboarding and quota, the node also dropped some transactions, but they still ran: a block being built already held them (merchant), or they were already in a block or the second collator still had them (the others). So they are blue. Claim: both collators evicted the same 819 before the first block started. They never ran: the coins were unchanged, and blocks #173754 to #173778 held inherents only. Recycling: the 287 with no receipt ran. Chain state at block #173206 proves it: for all 287, the source coin is spent and the member is set, exactly like the 8,479 finalized and the 245 found later. All 989 rejected show the coin unspent and no member. They have no receipt only because the test did not save their block, #173175. The old test version saved only blocks that contained a finalized watch; this was fixed later in commit 7f269bc. Sending in waves fixed it in every flow, and so did a bigger pool wherever we have a result.</aside>
 </section>
 
 <section>

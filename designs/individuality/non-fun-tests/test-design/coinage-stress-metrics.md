@@ -316,7 +316,7 @@ Every flow ran one burst of 10,000 on the default pool. **Every one of them reje
 | Claim | 989 (9.9%) | 819, evicted by the pool before any block; never ran | 8,192 (81.9%) | 1,808 (18.1%) |
 | Merchant fan-in | 989 (9.9%) | 818, all found later | 9,011 (90.1%) | 989 (9.9%) |
 | Split (first step of split-and-claim) | 989 (9.9%) | 819, none found (likely the same eviction, not analysed) | 8,192 (81.9%) | 1,808 (18.1%) |
-| Recycling | 989 (9.9%) | 532, of which 245 found later; 287 very probably in unsaved block #173175 | 8,724 (87.2%) | 1,276 (12.8%) |
+| Recycling | 989 (9.9%) | 532; 245 found later; 287 confirmed by chain state (block not saved) | 8,724 (87.2%) | 1,276 (12.8%); 287 of these ran (proven by chain state), so only the 989 rejected did not run |
 | Offboarding (run later, 7 October) | 989 (9.9%) | 89, all found later | 9,011 (90.1%) | 989 (9.9%) |
 | Free quota (run later, 8 October) | 989 (9.9%) | 90, all found later | 9,011 (90.1%) | 989 (9.9%) |
 
@@ -333,7 +333,7 @@ In the claim run, both collators evicted the same 819 before the first block sta
 
 Why do most flows show only blue and red? The pool dropped transactions in every flow, not only in claim. But something rescued them. In merchant fan-in, a block was already being built, and it already held the oldest transactions when the pool evicted them. In top-up, offboarding and free quota, the dropped transactions were already in a block, or the second collator still had them and included them later. So blue and red alone do not prove that the pool behaved well.
 
-In recycling, the second collator included 245 of the dropped transactions later. The other 287 very probably ran in block #173175. The old test version saved only blocks with a finalized watch, so it did not save that block. This was fixed later in commit [`7f269bc`](https://github.com/paritytech/polkadot-pop-e2e/commit/7f269bcf4f65109d6eb84b29c6afb1821c48c419). This is an inference: the block body was not saved, so we could not check the hashes. That is why recycling's 287 stay out of the verified count.
+In recycling, the second collator included 245 of the dropped transactions later. The other 287 also ran. The chain state at block #173206 proves it: for all 287, the source coin is spent and the member is set, exactly like the 8,479 finalized and the 245 found later. All 989 rejected show the coin unspent and no member. The 287 have no receipt only because the test did not save their block, #173175. The old test version saved only blocks that contained a finalized watch. This was fixed later in commit [`7f269bc`](https://github.com/paritytech/polkadot-pop-e2e/commit/7f269bcf4f65109d6eb84b29c6afb1821c48c419). So the receipt counts stay at 8,724 and 1,276, but only the 989 rejected did not run.
 
 The collators logged the pool at info level, so no log line shows each eviction. Rerunning with `-ltxpool=trace` would show them.
 
