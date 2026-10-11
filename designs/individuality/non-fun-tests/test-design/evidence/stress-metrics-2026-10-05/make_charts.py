@@ -342,6 +342,12 @@ def split_claim_timing():
 
 
 # Figure 7: lifecycle completion (verified / requested extrinsics).
+# Transactions that ran but have no saved receipt, proven by chain state.
+# Recycling 10,000, default pool: 287 loads in block #173175, which the old test did not save;
+# recycle-pilot-recycle-state.json at #173206 shows their coins spent and members set.
+STATE_CONFIRMED = {"b10000": 287}
+
+
 def completion():
     order = ["a100", "a1000", "a_paced", "a_pool", "a20000", "a40000", "a100000", "a10000",
              "b100", "b1000", "b_paced", "b_pool", "b20000", "b40000", "b10000", "b100000"]
@@ -373,10 +379,15 @@ def completion():
         v = lifecycle(case)["verifiedOutcome"]
         per_actor = 2 if case.startswith("a") else 1
         requested = v["requestedActors"] * per_actor
-        pct = 100 * v["receiptVerified"] / requested
+        by_state = STATE_CONFIRMED.get(case, 0)
+        ran = v["receiptVerified"] + by_state
+        pct = 100 * ran / requested
         ok = v["outcome"] == "workload-pass"
         ax.barh(i, pct, height=0.7, color=BLUE if ok else GREY, hatch=None if ok else "////", edgecolor=SURFACE, linewidth=0)
-        text = f"{pct:.0f}%  {v['receiptVerified']:,} of {requested:,}  ·  {status[v['outcome']]}"
+        if by_state:
+            text = f"{pct:.0f}%  {ran:,} of {requested:,} ({by_state} by chain state)  ·  989 rejected"
+        else:
+            text = f"{pct:.0f}%  {ran:,} of {requested:,}  ·  {status[v['outcome']]}"
         if v["ciShutdownFailure"]:
             text += " (CI shutdown failed later)"
         label_bar(ax, i, pct, text, 160)
@@ -384,8 +395,8 @@ def completion():
     style_hbar(ax, 160)
     ax.set_xticks([0, 25, 50, 75, 100], ["0%", "25%", "50%", "75%", "100%"])
     ax.axhline(7.5, color=AXIS, linewidth=1)
-    ax.set_xlabel("Verified receipts as a share of requested extrinsics")
-    ax.set_title("Lifecycle cases: how many extrinsics have a verified receipt?")
+    ax.set_xlabel("Share of requested extrinsics that ran (verified receipt, or chain state where noted)")
+    ax.set_title("Lifecycle cases: how many extrinsics ran?")
     save(fig, "lifecycle-completion.svg")
 
 

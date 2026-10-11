@@ -107,7 +107,7 @@ One coin-load extrinsic per actor, followed by a separate root-coverage observat
 | --- | --- | --- | --- | --- | --- |
 | [b100](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37116007842/attempts/1) | 100 / burst | 8,192 / 20 MiB (default) | 100 / 100 | workload-pass | 55.343 |
 | [b1000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/attempts/2) | 1,000 / burst | 8,192 / 20 MiB (default) | 1,000 / 1,000 | workload-pass | 110.629 |
-| [b10000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/attempts/2) | 10,000 / burst | 8,192 / 20 MiB (default) | 10,000 / 8,724 | incomplete | — |
+| [b10000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/attempts/2) | 10,000 / burst | 8,192 / 20 MiB (default) | 10,000 / 8,724 receipts + 287 by chain state = 9,011 ran; 989 rejected | incomplete | — |
 | [b_paced](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/attempts/2) | 10,000 / 8,000 + 2,000 paced | 8,192 / 20 MiB (default) | 10,000 / 10,000 | workload-pass | 480.183 |
 | [b_pool](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/attempts/2) | 10,000 / burst | 11,000 / 256 MiB | 10,000 / 10,000 | workload-pass | 389.279 |
 | [b20000](https://github.com/paritytech/polkadot-pop-e2e/actions/runs/37029048758/attempts/2) | 20,000 / burst | 22,000 / 256 MiB | 20,000 / 20,000 | workload-pass | 851.216 |

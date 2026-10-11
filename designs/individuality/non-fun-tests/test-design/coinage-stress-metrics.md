@@ -254,16 +254,16 @@ This is the test tool's memory, not the chain's memory. See the [claim resources
 
 The lifecycle campaign ran 16 cases: eight for split-and-claim and eight for recycling. Before we look at timing, let's see what finished.
 
-#### Figure 7: How many extrinsics have a verified receipt?
+#### Figure 7: How many extrinsics ran?
 
-[![Bar chart of verified receipts as a share of requested extrinsics for 16 lifecycle cases. 13 cases reach 100%. Split-and-claim at 10,000 on the default pool reaches 41%, recycling at 10,000 on the default pool 87% and recycling at 100,000 61%.](evidence/stress-metrics-2026-10-05/lifecycle-completion.svg)](evidence/stress-metrics-2026-10-05/lifecycle-completion.svg)
+[![Bar chart of the share of requested extrinsics that ran for 16 lifecycle cases. 13 cases reach 100%. Split-and-claim at 10,000 on the default pool reaches 41%, recycling at 10,000 on the default pool 90% (9,011 of 10,000, 287 of them confirmed by chain state) and recycling at 100,000 61%.](evidence/stress-metrics-2026-10-05/lifecycle-completion.svg)](evidence/stress-metrics-2026-10-05/lifecycle-completion.svg)
 
-*Figure 7. Each bar shows verified receipts divided by requested extrinsics. Split-and-claim requests two extrinsics for each actor. Grey bars are cases that did not pass.*
+*Figure 7. Each bar shows the extrinsics that ran divided by the extrinsics requested. An extrinsic counts when it has a verified receipt, or, for 287 recycling loads, when chain state proves it ran. Split-and-claim requests two extrinsics for each actor. Grey bars are cases that did not pass.*
 
 Most cases reached 100%. Three did not:
 
 - **Split-and-claim, 10,000 at once, default pool:** 8,192 of 10,000 splits verified. We did not send the claims.
-- **Recycling, 10,000 at once, default pool:** 8,724 of 10,000 verified.
+- **Recycling, 10,000 at once, default pool:** 9,011 of 10,000 ran, and the pool rejected 989. 8,724 have a verified receipt. The other 287 ran in block #173175, which the test did not save; chain state proves they ran (see [What happens when 10,000 arrive at once](#what-happens-when-10000-arrive-at-once-on-the-default-pool)).
 - **Recycling, 100,000:** 60,990 of 100,000 verified.
 
 One case reached 100% and still failed. Split-and-claim with 20,000 actors verified all 40,000 receipts. But our tool took 1.10 seconds to launch the splits, and the target was 1.00 second. So it is a **launch-time failure**. This is why I keep each outcome separate.
