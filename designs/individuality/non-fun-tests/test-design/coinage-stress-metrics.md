@@ -313,14 +313,29 @@ Every flow ran one burst of 10,000 on the default pool. **Every one of them reje
 | Flow | Rejected at pool entry | Watch lost | Verified receipts | No verified receipt |
 | --- | ---: | --- | ---: | ---: |
 | Top-up | 989 (9.9%) | 40, all found later | 9,011 (90.1%) | 989 (9.9%) |
-| Claim | 989 (9.9%) | 819; the coins had not changed at the cutoff | 8,192 (81.9%) | 1,808 (18.1%) |
+| Claim | 989 (9.9%) | 819, evicted by the pool before any block; never ran | 8,192 (81.9%) | 1,808 (18.1%) |
 | Merchant fan-in | 989 (9.9%) | 818, all found later | 9,011 (90.1%) | 989 (9.9%) |
-| Split (first step of split-and-claim) | 989 (9.9%) | 819, none found | 8,192 (81.9%) | 1,808 (18.1%) |
-| Recycling | 989 (9.9%) | 532, of which 245 found later | 8,724 (87.2%) | 1,276 (12.8%) |
+| Split (first step of split-and-claim) | 989 (9.9%) | 819, none found (likely the same eviction, not analysed) | 8,192 (81.9%) | 1,808 (18.1%) |
+| Recycling | 989 (9.9%) | 532, of which 245 found later; 287 very probably in unsaved block #173175 | 8,724 (87.2%) | 1,276 (12.8%) |
 | Offboarding (run later, 7 October) | 989 (9.9%) | 89, all found later | 9,011 (90.1%) | 989 (9.9%) |
 | Free quota (run later, 8 October) | 989 (9.9%) | 90, all found later | 9,011 (90.1%) | 989 (9.9%) |
 
-Why exactly 989? Because 10,000 − 989 = 9,011, and 9,011 = 8,192 + 819. The default pool has 8,192 slots for ready transactions. Substrate also keeps a second queue for transactions that can't run yet, [one tenth of that size](https://github.com/paritytech/polkadot-sdk/blob/master/substrate/client/transaction-pool/src/builder.rs): 819. So the pool took 9,011 and turned the rest away immediately. The 819 lost watches in the claim and split runs are the same size as that second queue, but we have not confirmed that they are the same transactions.
+Why exactly 989? Because 10,000 − 989 = 9,011, and 9,011 = 8,192 + 819. The default pool has 8,192 slots for ready transactions. Substrate also keeps a second queue for transactions that can't run yet, [one tenth of that size](https://github.com/paritytech/polkadot-sdk/blob/master/substrate/client/transaction-pool/src/builder.rs): 819. So the pool took 9,011 and turned the rest away immediately.
+
+What happened to the 819 claims that the pool accepted but never ran? We now know. The node ran polkadot-sdk at commit [`253fa81`](https://github.com/paritytech/polkadot-sdk/tree/253fa818f2b48ba8faadac57eb11c1cc5c9d562c).
+
+- The pool takes in up to ready + future transactions: [`pool.rs` L176](https://github.com/paritytech/polkadot-sdk/blob/253fa818f2b48ba8faadac57eb11c1cc5c9d562c/substrate/client/transaction-pool/src/graph/pool.rs#L176) and [`fork_aware_txpool.rs` L432](https://github.com/paritytech/polkadot-sdk/blob/253fa818f2b48ba8faadac57eb11c1cc5c9d562c/substrate/client/transaction-pool/src/fork_aware_txpool/fork_aware_txpool.rs#L432). So 9,011 got in.
+- But each block-building view keeps only 8,192 ready transactions. The view checks this limit after each new transaction: [`validated_pool.rs` L318](https://github.com/paritytech/polkadot-sdk/blob/253fa818f2b48ba8faadac57eb11c1cc5c9d562c/substrate/client/transaction-pool/src/graph/validated_pool.rs#L318) and [L408–L458](https://github.com/paritytech/polkadot-sdk/blob/253fa818f2b48ba8faadac57eb11c1cc5c9d562c/substrate/client/transaction-pool/src/graph/validated_pool.rs#L408-L458).
+- All claims are independent, so all 9,011 were ready at once. The view evicted the extra 819. The claims had equal priority, so it evicted the oldest first: [`base_pool.rs` L478–L485](https://github.com/paritytech/polkadot-sdk/blob/253fa818f2b48ba8faadac57eb11c1cc5c9d562c/substrate/client/transaction-pool/src/graph/base_pool.rs#L478-L485).
+- In this version, a dropped transaction is removed from the whole pool, not only from one view: [`fork_aware_txpool.rs` L372–L390](https://github.com/paritytech/polkadot-sdk/blob/253fa818f2b48ba8faadac57eb11c1cc5c9d562c/substrate/client/transaction-pool/src/fork_aware_txpool/fork_aware_txpool.rs#L372-L390). "Dropped" is final.
+
+In the claim run, both collators evicted the same 819 before the first block started. So the 819 never ran. Their coins were unchanged, and blocks #173754 to #173778 held inherents only.
+
+Why do most flows show only blue and red? The pool dropped transactions in every flow, not only in claim. But something rescued them. In merchant fan-in, a block was already being built, and it already held the oldest transactions when the pool evicted them. In top-up, offboarding and free quota, the dropped transactions were already in a block, or the second collator still had them and included them later. So blue and red alone do not prove that the pool behaved well.
+
+In recycling, the second collator included 245 of the dropped transactions later. The other 287 very probably ran in block #173175. The old test version saved only blocks with a finalized watch, so it did not save that block. This was fixed later in commit [`7f269bc`](https://github.com/paritytech/polkadot-pop-e2e/commit/7f269bcf4f65109d6eb84b29c6afb1821c48c419). This is an inference: the block body was not saved, so we could not check the hashes. That is why recycling's 287 stay out of the verified count.
+
+The collators logged the pool at info level, so no log line shows each eviction. Rerunning with `-ltxpool=trace` would show them.
 
 So, on the default pool, about **1 in 10 transactions failed straight away**, in every flow. Between 10% and 18% ended with no verified receipt. Waves and a bigger pool both avoided this.
 
